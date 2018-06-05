@@ -13,23 +13,16 @@ var fills = []
 var tasks = []
 var authentication = false  // auth in progress
 var mid = 0; // message id
-var debug = false
+var debug = true
 
-tasks = Read('tasks')
-
-
-/*
-var d1,d2
-var cnt=0
 setTimeout(function () {
-    //debug = true
-    d1 = new Date()
-    console.log(d1 + ' ' + d1.getMilliseconds());
-    ++cnt
-    //console.log(cnt);
-    Place('Sell')
+    var s = Read('settings.json')
+    console.log(s);
+    
+    Place({ 'accountId': s.accountId, 'action':'Buy', 'symbol':s.symbol, 'orderQty':s.lots })
 }, 2000)
-*/
+
+
 
 request.post({
         url: 'https://demo-api-d.tradovate.com/v1/auth/accesstokenrequest',
@@ -41,15 +34,17 @@ request.post({
         //body: 'user=LSzancsik&password=' + encodeURIComponent('%22P*g&m')
         //body: 'user=LSzancsik&password=%22P*g&m'
         //body: JSON.stringify({ name: 'LSzancsik', password: encodeURIComponent('%22P*g&m') })
-        body: JSON.stringify({ name: 'LSzancsik', password: '%22P*g&m' })
+        //body: JSON.stringify({ name: 'LSzancsik', password: '%22P*g&m' })
+        body: JSON.stringify({ name: 'MOrdody', password: 'Vahot$11' })
     },
     function (error, response, body) {
+        //console.log(body)
         if (!error && response.statusCode == 200) {
             token = JSON.parse(body)
             //console.log(token.accessToken)
             authentication = true
             client.connect('wss://demo-api-d.tradovate.com/v1/websocket');
-        }
+        }        
     }
 );
 
@@ -69,6 +64,7 @@ client.on('connect', function(connection) {
     });
     connection.on('message', function(message) {
         //console.log(message);
+
         if (message.type === 'utf8') {
             //console.log("Received: '" + message.utf8Data + "'")
             if (message.utf8Data.substr(0,1) == 'a')    {
@@ -77,7 +73,7 @@ client.on('connect', function(connection) {
                     if (got[0].i == 1 && got[0].s == 200) {
                         console.log('Connection Authorized');
                         authentication = false
-                        Post('user/syncrequest', { "users": [3159] });
+                        //Post('user/syncrequest', { "users": [3159] });
                         //Get('account/list', '')
                         return true
                     } else {
@@ -136,7 +132,7 @@ function GotEvent(got)   {
                 console.log(GetSymbol(e.d.entity.contractId));
                 console.log(e.d);
                 if (t.type == 'copy' && t.from.id == 2712 && t.from.symbol == GetSymbol(e.d.entity.contractId))  {
-                    Place({ 'accountId': t.to.id, 'action':'Buy', 'symbol':t.to.symbol, 'orderQty':t.multiplier })
+                    //Place({ 'accountId': t.to.id, 'action':'Buy', 'symbol':t.to.symbol, 'orderQty':t.multiplier })
                 }
             })
         }
@@ -145,6 +141,7 @@ function GotEvent(got)   {
 
 
 function Got(got)   {
+    if (debug) console.log(got);
     var r = reqs[got[0].i]
     if (debug) console.log(r);
     if (r.url == 'order/placeorder')   {
@@ -167,8 +164,7 @@ function Got(got)   {
         synced = got[0].d
         //Object.keys(got[0].d).forEach(function (v,k) { console.log(v); })
         Write('synced', synced)
-    }
-    /*
+    }/*
     else if (r.url == 'account/list')   {
         accounts = got[0].d
         //console.log(accounts[0].name);

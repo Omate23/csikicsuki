@@ -1,0 +1,15 @@
+[
+    {
+        "id": 2711,
+        "name": "DEMO03158",
+        "userId": 3158,
+        "accountType": "Customer",
+        "active": true,
+        "clearingHouseId": 3,
+        "riskCategoryId": 2,
+        "autoLiqProfileId": 1,
+        "marginAccountType": "Speculator",
+        "legalStatus": "Individual",
+        "archived": false
+    }
+]

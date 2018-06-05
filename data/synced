@@ -1,0 +1,354 @@
+{
+    "users": [],
+    "accounts": [],
+    "orders": [],
+    "contracts": [],
+    "contractMaturities": [],
+    "products": [],
+    "exchanges": [
+        {
+            "id": 12,
+            "name": "ICE Europe Commodities",
+            "complex": "ICE",
+            "timeZone": "CST",
+            "isSecuredDefault": true,
+            "cftcReporting": false,
+            "freeMarketData": false,
+            "span": "I"
+        },
+        {
+            "id": 9,
+            "name": "ICE Europe Financials",
+            "complex": "LIFFE",
+            "timeZone": "CST",
+            "isSecuredDefault": true,
+            "cftcReporting": false,
+            "freeMarketData": false,
+            "span": "L"
+        },
+        {
+            "id": 1,
+            "name": "CBOT",
+            "complex": "CME",
+            "timeZone": "CST",
+            "isSecuredDefault": false,
+            "cftcReporting": true,
+            "freeMarketData": false,
+            "span": "CBT"
+        },
+        {
+            "id": 13,
+            "name": "Market Internals",
+            "complex": "COMP",
+            "timeZone": "CST",
+            "isSecuredDefault": false,
+            "cftcReporting": false,
+            "freeMarketData": false
+        },
+        {
+            "id": 5,
+            "name": "ICE Futures US",
+            "complex": "ICE",
+            "timeZone": "CST",
+            "isSecuredDefault": false,
+            "cftcReporting": false,
+            "freeMarketData": false,
+            "span": "N"
+        },
+        {
+            "id": 2,
+            "name": "CME",
+            "complex": "CME",
+            "timeZone": "CST",
+            "isSecuredDefault": false,
+            "cftcReporting": true,
+            "freeMarketData": false,
+            "span": "CME"
+        },
+        {
+            "id": 6,
+            "name": "EUREX",
+            "complex": "EUREX",
+            "timeZone": "CST",
+            "isSecuredDefault": true,
+            "cftcReporting": false,
+            "freeMarketData": false
+        },
+        {
+            "id": 3,
+            "name": "NYMEX",
+            "complex": "CME",
+            "timeZone": "CST",
+            "isSecuredDefault": false,
+            "cftcReporting": true,
+            "freeMarketData": false,
+            "span": "NYM"
+        },
+        {
+            "id": 7,
+            "name": "MGE",
+            "complex": "CME",
+            "timeZone": "CST",
+            "isSecuredDefault": false,
+            "cftcReporting": true,
+            "freeMarketData": false,
+            "span": "MGE"
+        },
+        {
+            "id": 4,
+            "name": "COMEX",
+            "complex": "CME",
+            "timeZone": "CST",
+            "isSecuredDefault": false,
+            "cftcReporting": true,
+            "freeMarketData": false,
+            "span": "CMX"
+        },
+        {
+            "id": 14,
+            "name": "GDAX",
+            "complex": "GDAX",
+            "timeZone": "EST",
+            "isSecuredDefault": false,
+            "cftcReporting": false,
+            "freeMarketData": true
+        },
+        {
+            "id": 8,
+            "name": "LIFFE",
+            "complex": "LIFFE",
+            "timeZone": "CST",
+            "isSecuredDefault": true,
+            "cftcReporting": false,
+            "freeMarketData": false
+        }
+    ],
+    "spreadDefinitions": [],
+    "commands": [],
+    "commandReports": [],
+    "executionReports": [],
+    "orderVersions": [],
+    "fills": [],
+    "cashBalances": [],
+    "currencies": [
+        {
+            "id": 9,
+            "name": "CHF",
+            "symbol": "CHF"
+        },
+        {
+            "id": 1,
+            "name": "USD",
+            "symbol": "$"
+        },
+        {
+            "id": 5,
+            "name": "CAD",
+            "symbol": "CAD"
+        },
+        {
+            "id": 2,
+            "name": "EUR",
+            "symbol": "EUR"
+        },
+        {
+            "id": 6,
+            "name": "JPY",
+            "symbol": "JPY"
+        },
+        {
+            "id": 3,
+            "name": "AUD",
+            "symbol": "AUD"
+        },
+        {
+            "id": 7,
+            "name": "MXN",
+            "symbol": "MXN"
+        },
+        {
+            "id": 4,
+            "name": "GBP",
+            "symbol": "GBP"
+        },
+        {
+            "id": 8,
+            "name": "NZD",
+            "symbol": "NZD"
+        }
+    ],
+    "positions": [],
+    "fillPairs": [],
+    "orderStrategies": [],
+    "orderStrategyLinks": [],
+    "userProperties": [],
+    "properties": [
+        {
+            "id": 15,
+            "name": "hasMarketDataWaiver",
+            "propertyType": "Boolean",
+            "accessControlLevel": "AdminAccess",
+            "defaultValue": "false"
+        },
+        {
+            "id": 12,
+            "name": "maxDaysWithHistograms",
+            "propertyType": "Integer",
+            "accessControlLevel": "AdminAccess",
+            "defaultValue": "14"
+        },
+        {
+            "id": 9,
+            "name": "CTA",
+            "propertyType": "Boolean",
+            "accessControlLevel": "AdminAccess",
+            "defaultValue": "false"
+        },
+        {
+            "id": 1,
+            "name": "fxUsername",
+            "propertyType": "String"
+        },
+        {
+            "id": 16,
+            "name": "DemoAccountLimit",
+            "propertyType": "Integer",
+            "accessControlLevel": "AdminAccess",
+            "defaultValue": "1"
+        },
+        {
+            "id": 13,
+            "name": "ofaVolumeProfileBars",
+            "propertyType": "Integer",
+            "accessControlLevel": "AdminAccess",
+            "defaultValue": "2880"
+        },
+        {
+            "id": 5,
+            "name": "SuggestLimit",
+            "propertyType": "Integer",
+            "accessControlLevel": "AdminAccess",
+            "defaultValue": "10"
+        },
+        {
+            "id": 2,
+            "name": "fxLiveToken",
+            "propertyType": "String"
+        },
+        {
+            "id": 6,
+            "name": "ConnectionLimit",
+            "propertyType": "Integer",
+            "accessControlLevel": "AdminAccess",
+            "defaultValue": "50"
+        },
+        {
+            "id": 3,
+            "name": "fxDemoToken",
+            "propertyType": "String"
+        },
+        {
+            "id": 10,
+            "name": "AutoAcceptCTA",
+            "propertyType": "Boolean",
+            "accessControlLevel": "AdminAccess",
+            "defaultValue": "false"
+        },
+        {
+            "id": 7,
+            "name": "IPConnectionLimit",
+            "propertyType": "Integer",
+            "accessControlLevel": "AdminAccess",
+            "defaultValue": "5"
+        },
+        {
+            "id": 4,
+            "name": "StopRecurrentMD",
+            "propertyType": "String"
+        },
+        {
+            "id": 14,
+            "name": "pushNotificationsSettings",
+            "propertyType": "String",
+            "defaultValue": "{}"
+        },
+        {
+            "id": 11,
+            "name": "orderStrategiesLimit",
+            "propertyType": "Integer",
+            "accessControlLevel": "AdminAccess",
+            "defaultValue": "10"
+        },
+        {
+            "id": 8,
+            "name": "OrganizationAdmin",
+            "propertyType": "Boolean",
+            "accessControlLevel": "AdminAccess",
+            "defaultValue": "false"
+        }
+    ],
+    "userPlugins": [],
+    "userReadStatuses": [],
+    "contractGroups": [
+        {
+            "id": 19,
+            "name": "Energies"
+        },
+        {
+            "id": 1,
+            "name": "General"
+        },
+        {
+            "id": 16,
+            "name": "Currencies"
+        },
+        {
+            "id": 13,
+            "name": "Grains"
+        },
+        {
+            "id": 2,
+            "name": "Indices"
+        },
+        {
+            "id": 20,
+            "name": "E-Mini Indices"
+        },
+        {
+            "id": 17,
+            "name": "Meats"
+        },
+        {
+            "id": 21,
+            "name": "Market Internals"
+        },
+        {
+            "id": 3,
+            "name": "Financials"
+        },
+        {
+            "id": 18,
+            "name": "Softs"
+        },
+        {
+            "id": 10,
+            "name": "Metals"
+        },
+        {
+            "id": 22,
+            "name": "Cryptocurrencies"
+        }
+    ],
+    "orderStrategyTypes": [
+        {
+            "id": 1,
+            "name": "ofa:multibracket",
+            "enabled": true
+        },
+        {
+            "id": 2,
+            "name": "multibracket",
+            "enabled": true
+        }
+    ]
+}
