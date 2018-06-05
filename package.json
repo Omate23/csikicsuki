@@ -10,6 +10,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "nodemon": "^1.17.5"
+    "nodemon": "^1.17.5",
+    "request": "^2.87.0",
+    "websocket": "^1.0.26"
   }
 }
