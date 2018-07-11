@@ -19,7 +19,8 @@ setTimeout(function () {
     var s = Read('settings.json')
     console.log(s);
     
-    Place({ 'accountId': s.accountId, 'action':'Sell', 'symbol':s.symbol, 'orderQty':s.lots })
+    //Place({ 'accountId': s.accountId, 'action':'Sell', 'symbol':s.symbol, 'orderQty':s.lots })
+    PlaceOCO({ 'accountId': s.accountId, 'action':'Buy', 'symbol':s.symbol, 'orderQty':s.lots })
 }, 3000)
 
 
@@ -289,7 +290,15 @@ function Place0(bs)    {
     Post('order/placeorder', data)
 }
 
-function PlaceOCO() {
+function PlaceOCO(trade) {
+    var expt = new Date();
+    expt.setSeconds(expt.getSeconds() + 10);
+
+    var data = {
+        "orderType": "Limit",
+        "timeInForce": "GTD",
+        "expireTime": expt.toISOString(),
+    }
     var data = {
         //"accountSpec": "string",
         "accountId": accounts[0].id,
@@ -319,7 +328,8 @@ function PlaceOCO() {
             //"text": "string"
         }
     }
-    Post('order/placeoco', data)
+    Post('order/placeorder', Object.assign(trade, data))
+    //Post('order/placeoco', data)
 }
 
 function ChangeDemoBalance()    {
