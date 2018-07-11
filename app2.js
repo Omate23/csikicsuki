@@ -13,14 +13,14 @@ var fills = []
 var tasks = []
 var authentication = false  // auth in progress
 var mid = 0; // message id
-var debug = true
+var debug = false
 
-/*setTimeout(function () {
+setTimeout(function () {
     var s = Read('settings.json')
-    console.log(s);
+    //console.log(s);
     
     //Place({ 'accountId': s.accountId, 'action':'Buy', 'symbol':s.symbol, 'orderQty':s.lots })
-}, 2000)*/
+}, 2000)
 
 
 
@@ -42,10 +42,10 @@ request.post({
         //console.log(body)
         if (!error && response.statusCode == 200) {
             token = JSON.parse(body)
-            console.log(token)
+            //console.log(token)
             authentication = true
             //client.connect('wss://demo-api-d.tradovate.com/v1/websocket');
-            client.connect('wss://md-api.tradovate.com/v1/websocket');
+            client.connect('wss://md-api-d.tradovate.com/v1/websocket');
         }        
     }
 );
@@ -65,7 +65,7 @@ client.on('connect', function(connection) {
         console.log('Connection Closed');
     });
     connection.on('message', function(message) {
-        console.log(message);
+        //console.log(message);
 
         if (message.type === 'utf8') {
             //console.log("Received: '" + message.utf8Data + "'")
@@ -77,7 +77,7 @@ client.on('connect', function(connection) {
                         authentication = false
                         //Post('user/syncrequest', { "users": [3159] });
                         //Get('account/list', '')
-                        Get('md/subscribeQuote', { "symbol":"NQM8" })
+                        Get('md/subscribeQuote', { "symbol":"ESU8" })
                         return true
                     } else {
                         console.log('Connection Authorization Error');
