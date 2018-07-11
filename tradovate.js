@@ -1,67 +1,54 @@
 #!/usr/bin/env node
 
 var WebSocketClient = require('websocket').client;
-var client = new WebSocketClient()
+var api = new WebSocketClient()
+var market = new WebSocketClient()
+
 var request = require('request');
 var fs = require('fs');
 
-var conn, token, accounts, positions;
-var synced = []
-var contracts = []
+const EventEmitter = require('events').EventEmitter;
+const TradovateEvents = new EventEmitter;
+
 var reqs = []
-var fills = []
-var tasks = []
 var authentication = false  // auth in progress
 var mid = 0; // message id
-var debug = false
-
-setTimeout(function () {
-    var s = Read('settings.json')
-    //console.log(s);
-    
-    Place({ 'accountId': s.accountId, 'action':'Buy', 'symbol':s.symbol, 'orderQty':s.lots })
-}, 2000)
-
+var debug = true
 
 
 request.post({
         url: 'https://demo-api-d.tradovate.com/v1/auth/accesstokenrequest',
-        //url: 'https://md-api.tradovate.com',
-        //json: { name: 'LSzancsik', password: encodeURIComponent('%22P*g&m') },
         headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         },
-        //body: 'user=LSzancsik&password=' + encodeURIComponent('%22P*g&m')
-        //body: 'user=LSzancsik&password=%22P*g&m'
-        //body: JSON.stringify({ name: 'LSzancsik', password: encodeURIComponent('%22P*g&m') })
-        //body: JSON.stringify({ name: 'LSzancsik', password: '%22P*g&m' })
         body: JSON.stringify({ name: 'MOrdody', password: 'Vahot$11' })
     },
     function (error, response, body) {
         //console.log(body)
         if (!error && response.statusCode == 200) {
             token = JSON.parse(body)
-            //console.log(token)
             authentication = true
-            client.connect('wss://md-api-d.tradovate.com/v1/websocket');
+            api.connect('wss://demo-api-d.tradovate.com/v1/websocket');
         }        
     }
 );
 
-client.on('connectFailed', function(error) {
-    console.log('Connect Error: ' + error.toString());
+api.on('connectFailed', function(error) {
+    console.log('Connect API Error: ' + error.toString());
+});
+market.on('connectFailed', function(error) {
+    console.log('Connect Market Error: ' + error.toString());
 });
 
-client.on('connect', function(connection) {
-    console.log('WebSocket Client Connected');
+api.on('connect', function(connection) {
+    console.log('WebSocket API Client Connected');
     conn = connection
     connection.on('error', function(error) {
-        console.log("Connection Error: " + error.toString());
+        console.log("API Connection Error: " + error.toString());
     });
     connection.on('close', function() {
-        //console.log('echo-protocol Connection Closed');
-        console.log('Connection Closed');
+        console.log('API Connection Closed');
     });
     connection.on('message', function(message) {
         //console.log(message);
@@ -74,9 +61,9 @@ client.on('connect', function(connection) {
                     if (got[0].i == 1 && got[0].s == 200) {
                         console.log('Connection Authorized');
                         authentication = false
-                        //Post('user/syncrequest', { "users": [3159] });
-                        //Get('account/list', '')
-                        Get('md/subscribeQuote', { "symbol":"ESU8" })
+                        market.connect('wss://md-api-d.tradovate.com/v1/websocket');
+                        var s = Read('settings.json')
+                        //Place({ 'accountId': s.accountId, 'action':'Buy', 'symbol':s.symbol, 'orderQty':s.lots })
                         return true
                     } else {
                         console.log('Connection Authorization Error');
@@ -84,24 +71,46 @@ client.on('connect', function(connection) {
                     }
                 }
                 else if (got[0].s == 200) {
+                    //Got(got)
+                    return true
+                }
+                else if (got[0].e == 'props') {     // Event
+                    //GotEvent(got)
+                    return true
+                }
+                else {
+                    console.log('Not OK!');
+                    console.log("Received: '" + message.utf8Data + "'")
+                    return false
+                }
+            }
+            else if (message.utf8Data == 'h') Heartbeat()
+            else if (message.utf8Data == 'o') Authorize()
+            else if (message.utf8Data == 'c') Closed()
+            else { console.log('Unknown frame: ' + message.utf8Data);  }
+        }
+        else { console.log('Something non-UTF-8...: ' + message); }
+    });
+});
+
+market.on('connect', function(connection) {
+    console.log('WebSocket Market Client Connected');
+    connection.on('error', function(error) {
+        console.log("Market Connection Error: " + error.toString());
+    });
+    connection.on('close', function() {
+        console.log('Market Connection Closed');
+    });
+    connection.on('message', function(message) {
+        //console.log(message);
+
+        if (message.type === 'utf8') {
+            //console.log("Received: '" + message.utf8Data + "'")
+            if (message.utf8Data.substr(0,1) == 'a')    {
+                var got = JSON.parse(message.utf8Data.substr(1))    // chop beginning 'a'
+                if (got[0].s == 200) {
                     Got(got)
                     return true
-                    /*
-                    if (got[0].i == 2) {    // account/list
-                        accounts = got[0].d
-                        //console.log(accounts[0].name);
-                        accounts.forEach(function (v,k) {
-                            Get('position/list', '', )
-                        })
-                    }
-                    else if (got[0].i == 3) {    // position/list
-                        positions = got[0].d
-                        //console.log(positions[0]);
-                        positions.forEach(function (v,k) {
-                            Get('contract/item', { id: v.contractId }, )
-                        })
-                    }
-                    */
                 }
                 else if (got[0].e == 'props') {     // Event
                     GotEvent(got)
@@ -245,8 +254,7 @@ function Authorize()    {
     //Post('authorize', token.accessToken);
     if (conn.connected) {
         ++mid
-        //var frame = ['authorize', mid, '', token.accessToken].join("\n")
-        var frame = ['authorize', mid, '', token.mdAccessToken].join("\n")
+        var frame = ['authorize', mid, '', token.accessToken].join("\n")
         conn.sendUTF(frame);
         if (debug) console.log(frame);
     } //else
@@ -292,7 +300,15 @@ function Place0(bs)    {
     Post('order/placeorder', data)
 }
 
-function PlaceOCO() {
+function PlaceOCO(trade) {
+    var expt = new Date();
+    expt.setSeconds(expt.getSeconds() + 10);
+
+    var data = {
+        "orderType": "Limit",
+        "timeInForce": "GTD",
+        "expireTime": expt.toISOString(),
+    }
     var data = {
         //"accountSpec": "string",
         "accountId": accounts[0].id,
@@ -322,34 +338,16 @@ function PlaceOCO() {
             //"text": "string"
         }
     }
-    Post('order/placeoco', data)
+    Post('order/placeorder', Object.assign(trade, data))
+    //Post('order/placeoco', data)
 }
 
-function ChangeDemoBalance()    {
-    Post('cashBalance/changedemobalance', {
-        "accountId": 0,
-        "cashChange": 0
-    })
-}
-
-function FindContract(c)    {
-    return contracts.forEach(function (v,k)    {
-        if (v.id == c.id) return v
-    })
-}
-
-function Write(file, data)    {
-    var dir = './data/'
-    fs.writeFile(dir+file, JSON.stringify(data, null, 4), function(err) {
-        if (err) { return console.log('File write error: ' + err); }
-    })
-}
-
-function Append(file, data)    {
-    var dir = './data/'
-    fs.appendFile(dir+file, JSON.stringify(data, null, 4), function(err) {
-        if (err) { return console.log('File write error: ' + err); }
-    })
+function ObjectToQueryString(o) {
+    if (!o) return null;
+    var qs = Object.keys(o).map(function(k) {
+        return k + '=' + o[k]
+    }).join('&');
+    return qs
 }
 
 function Read(file)    {
@@ -359,12 +357,4 @@ function Read(file)    {
         tasks = JSON.parse(data)
     })*/
     return JSON.parse(fs.readFileSync(dir+file, 'utf8'))
-}
-
-function ObjectToQueryString(o) {
-    if (!o) return null;
-    var qs = Object.keys(o).map(function(k) {
-        return k + '=' + o[k]
-    }).join('&');
-    return qs
 }
