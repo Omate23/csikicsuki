@@ -19,7 +19,7 @@ setTimeout(function () {
     var s = Read('settings.json')
     //console.log(s);
     
-    Place({ 'accountId': s.accountId, 'action':'Buy', 'symbol':s.symbol, 'orderQty':s.lots })
+    //Place({ 'accountId': s.accountId, 'action':'Buy', 'symbol':s.symbol, 'orderQty':s.lots })
 }, 2000)
 
 

@@ -20,7 +20,7 @@ setTimeout(function () {
     console.log(s);
     
     //Place({ 'accountId': s.accountId, 'action':'Sell', 'symbol':s.symbol, 'orderQty':s.lots })
-    PlaceOCO({ 'accountId': s.accountId, 'action':'Buy', 'symbol':s.symbol, 'orderQty':s.lots })
+    //PlaceOCO({ 'accountId': s.accountId, 'action':'Buy', 'symbol':s.symbol, 'orderQty':s.lots })
 }, 3000)
 
 
