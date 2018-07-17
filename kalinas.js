@@ -112,7 +112,7 @@ function GotMD(got)   {
 
 
 function Kalinas(quote)  {
-    console.log(quote);
+    //console.log(quote);
     var dir = '';
     if (quote.entries.Bid.price == quote.entries.Trade.price) {
         dir = 'Bid';

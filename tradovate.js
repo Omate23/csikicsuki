@@ -10,10 +10,11 @@ var fs = require('fs');
 const EventEmitter = require('events').EventEmitter;
 const TradovateEvents = new EventEmitter;
 
+var token
 var reqs = []
-var authentication = false  // auth in progress
+var authenticationAPI = false, authenticationMarket = false;  // auth in progress
 var mid = 0; // message id
-var debug = true
+var debug = false
 
 
 request.post({
@@ -28,7 +29,7 @@ request.post({
         //console.log(body)
         if (!error && response.statusCode == 200) {
             token = JSON.parse(body)
-            authentication = true
+            authenticationAPI = true
             api.connect('wss://demo-api-d.tradovate.com/v1/websocket');
         }        
     }
@@ -43,7 +44,6 @@ market.on('connectFailed', function(error) {
 
 api.on('connect', function(connection) {
     console.log('WebSocket API Client Connected');
-    conn = connection
     connection.on('error', function(error) {
         console.log("API Connection Error: " + error.toString());
     });
@@ -57,10 +57,11 @@ api.on('connect', function(connection) {
             //console.log("Received: '" + message.utf8Data + "'")
             if (message.utf8Data.substr(0,1) == 'a')    {
                 var got = JSON.parse(message.utf8Data.substr(1))    // chop beginning 'a'
-                if (authentication) {
+                if (authenticationAPI) {
                     if (got[0].i == 1 && got[0].s == 200) {
-                        console.log('Connection Authorized');
-                        authentication = false
+                        console.log('API Connection Authorized');
+                        authenticationAPI = false
+                        authenticationMarket = true
                         market.connect('wss://md-api-d.tradovate.com/v1/websocket');
                         var s = Read('settings.json')
                         //Place({ 'accountId': s.accountId, 'action':'Buy', 'symbol':s.symbol, 'orderQty':s.lots })
@@ -69,23 +70,22 @@ api.on('connect', function(connection) {
                         console.log('Connection Authorization Error');
                         return false
                     }
-                }
-                else if (got[0].s == 200) {
-                    //Got(got)
+                } else if (got[0].s == 200) {
+                    console.log('apigot');
+                    
+                    Got(got)
                     return true
-                }
-                else if (got[0].e == 'props') {     // Event
-                    //GotEvent(got)
+                } else if (got[0].e == 'props') {     // Event
+                    GotEvent(got)
                     return true
-                }
-                else {
+                } else {
                     console.log('Not OK!');
                     console.log("Received: '" + message.utf8Data + "'")
                     return false
                 }
             }
-            else if (message.utf8Data == 'h') Heartbeat()
-            else if (message.utf8Data == 'o') Authorize()
+            else if (message.utf8Data == 'h') Heartbeat(connection)
+            else if (message.utf8Data == 'o') Authorize(connection)
             else if (message.utf8Data == 'c') Closed()
             else { console.log('Unknown frame: ' + message.utf8Data);  }
         }
@@ -108,28 +108,45 @@ market.on('connect', function(connection) {
             //console.log("Received: '" + message.utf8Data + "'")
             if (message.utf8Data.substr(0,1) == 'a')    {
                 var got = JSON.parse(message.utf8Data.substr(1))    // chop beginning 'a'
-                if (got[0].s == 200) {
+                if (authenticationMarket) {
+                    if (got[0].i == 2 && got[0].s == 200) {
+                        console.log('Market Connection Authorized');
+                        authenticationMarket = false
+                        return true
+                    } else {
+                        console.log('Connection Authorization Error');
+                        return false
+                    }
+                } else if (got[0].s == 200) {
                     Got(got)
                     return true
-                }
-                else if (got[0].e == 'props') {     // Event
-                    GotEvent(got)
+                } else if (got[0].e == 'md') {     // Market data
+                    GotMD(got)
                     return true
-                }
-                else {
-                    console.log('Not OK!');
+                } else {
+                    console.log('Not OK MD!');
                     console.log("Received: '" + message.utf8Data + "'")
                     return false
                 }
             }
-            else if (message.utf8Data == 'h') Heartbeat()
-            else if (message.utf8Data == 'o') Authorize()
+            else if (message.utf8Data == 'h') Heartbeat(connection)
+            else if (message.utf8Data == 'o') Authorize(connection)
             else if (message.utf8Data == 'c') Closed()
             else { console.log('Unknown frame: ' + message.utf8Data);  }
         }
         else { console.log('Something non-UTF-8...: ' + message); }
     });
 });
+
+function GotMD(got)   {
+    //if (debug) 
+    console.log(got[0].d);
+    got.forEach(function (e,k) {
+        if (e.d.quotes)   {
+            //TradovateEvents.emit('price', e.d.quotes[0])
+        }
+    })
+}
 
 function GotEvent(got)   {
     if (debug) console.log(got[0].d);
@@ -155,63 +172,15 @@ function Got(got)   {
     if (debug) console.log(got);
     var r = reqs[got[0].i]
     if (debug) console.log(r);
-    if (r.url == 'order/placeorder')   {
-        /*
-        if (cnt++ < 10) {
-            //console.log(cnt);
-            if (cnt % 2) Place('Sell')
-            else Place('Buy')
-        }
-        else {
-            var d2 = new Date()
-            console.log(d2 + ' ' + d2.getMilliseconds());
-            //console.log(cnt);
-            console.log('Diff: ');
-            console.log(d2-d1);
-        }
-        */
-    }
+    if (r.url == 'order/placeorder')   {}
     else if (r.url == 'user/syncrequest')   {
         synced = got[0].d
         //Object.keys(got[0].d).forEach(function (v,k) { console.log(v); })
         Write('synced', synced)
-    }/*
-    else if (r.url == 'account/list')   {
-        accounts = got[0].d
-        //console.log(accounts[0].name);
-        accounts.forEach(function (v,k) {
-            Get('position/list', '', { account: v })
-            Get('fill/list', null, { account: v })
-        })
-        Write('accounts', accounts)
     }
-    else if (r.url == 'position/list')   {
-        positions = got[0].d
-        //console.log(positions[0]);
-        positions.forEach(function (v,k) {
-            if (!contracts[v.contractId])   {
-                Get('contract/item', { id: v.contractId }, { account: positions.store, position: v } )
-            }
-        })
-        Write('postions', positions)
-    }
-    else if (r.url == 'contract/item')   {
-        if (!FindContract(got[0].d.id)) {
-            contracts.push(got[0].d)
-            //console.log(got[0].d.name);
-            //contracts[got[0].d.id] = got[0].d.name
-            //console.log(contracts);
-            Write('contracts', contracts)
-        }
-    }
-    else if (r.url == 'fill/list')   {
-        fills.push({ AccountId: r.store.account.id, fills: got[0].d })
-        Write('fills', fills)
-    }
-    */
 }
 
-function Get(url, queryarr, store)  {
+function Get(conn, url, queryarr, store)  {
     if (conn.connected) {
         ++mid
         //var query = (queryarr.length) ? ArrayToQueryString(queryarr) : ''
@@ -226,7 +195,7 @@ function Get(url, queryarr, store)  {
     } //else setTimeout(Msg(url, url, query, body), 50);
 }
 
-function Post(url, bodyarr, store)  {
+function Post(conn, url, bodyarr, store)  {
     if (conn.connected) {
         ++mid
         var body = JSON.stringify(bodyarr)
@@ -250,7 +219,7 @@ function GetSymbol(cid) {
     return symname
 }
 
-function Authorize()    {
+function Authorize(conn)    {
     //Post('authorize', token.accessToken);
     if (conn.connected) {
         ++mid
@@ -260,7 +229,7 @@ function Authorize()    {
     } //else
 }
 
-function Heartbeat()    {
+function Heartbeat(conn)    {
     console.log('[]');
     conn.sendUTF('[]');
 }
@@ -275,7 +244,7 @@ function Place(trade)   {
         "expireTime": expt.toISOString(),
     }
     console.log(Object.assign(trade, data));
-    Post('order/placeorder', Object.assign(trade, data))
+    Post(market, 'order/placeorder', Object.assign(trade, data))
 }
 
 function Place0(bs)    {
@@ -297,7 +266,7 @@ function Place0(bs)    {
         //"text": "ho!",
         //"activationTime": "2018-01-22T11:46:33.360Z"
     }
-    Post('order/placeorder', data)
+    Post(market, 'order/placeorder', data)
 }
 
 function PlaceOCO(trade) {
@@ -338,7 +307,7 @@ function PlaceOCO(trade) {
             //"text": "string"
         }
     }
-    Post('order/placeorder', Object.assign(trade, data))
+    Post(market, 'order/placeorder', Object.assign(trade, data))
     //Post('order/placeoco', data)
 }
 
