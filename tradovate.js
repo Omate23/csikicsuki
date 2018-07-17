@@ -9,13 +9,14 @@ var fs = require('fs');
 
 const EventEmitter = require('events').EventEmitter;
 const TradovateEvents = new EventEmitter;
+exports.Events = TradovateEvents;
 
 var token
+var apiConnection, marketConnection
 var reqs = []
 var authenticationAPI = false, authenticationMarket = false;  // auth in progress
 var mid = 0; // message id
 var debug = false
-
 
 request.post({
         url: 'https://demo-api-d.tradovate.com/v1/auth/accesstokenrequest',
@@ -43,36 +44,35 @@ market.on('connectFailed', function(error) {
 });
 
 api.on('connect', function(connection) {
+    apiConnection = connection
     console.log('WebSocket API Client Connected');
     connection.on('error', function(error) {
         console.log("API Connection Error: " + error.toString());
     });
-    connection.on('close', function() {
+    connection.on('close', function(message) {
+        console.log(': '+message);
         console.log('API Connection Closed');
     });
     connection.on('message', function(message) {
-        //console.log(message);
+        console.log(message);
 
         if (message.type === 'utf8') {
-            //console.log("Received: '" + message.utf8Data + "'")
+            console.log("API Received: '" + message.utf8Data + "'")
             if (message.utf8Data.substr(0,1) == 'a')    {
                 var got = JSON.parse(message.utf8Data.substr(1))    // chop beginning 'a'
                 if (authenticationAPI) {
                     if (got[0].i == 1 && got[0].s == 200) {
                         console.log('API Connection Authorized');
                         authenticationAPI = false
+                        Post(connection, 'user/syncrequest', { "users": [3158] });
                         authenticationMarket = true
                         market.connect('wss://md-api-d.tradovate.com/v1/websocket');
-                        var s = Read('settings.json')
-                        //Place({ 'accountId': s.accountId, 'action':'Buy', 'symbol':s.symbol, 'orderQty':s.lots })
                         return true
                     } else {
                         console.log('Connection Authorization Error');
                         return false
                     }
                 } else if (got[0].s == 200) {
-                    console.log('apigot');
-                    
                     Got(got)
                     return true
                 } else if (got[0].e == 'props') {     // Event
@@ -94,6 +94,7 @@ api.on('connect', function(connection) {
 });
 
 market.on('connect', function(connection) {
+    marketConnection = connection
     console.log('WebSocket Market Client Connected');
     connection.on('error', function(error) {
         console.log("Market Connection Error: " + error.toString());
@@ -105,13 +106,15 @@ market.on('connect', function(connection) {
         //console.log(message);
 
         if (message.type === 'utf8') {
-            //console.log("Received: '" + message.utf8Data + "'")
+            //console.log("Market Received: '" + message.utf8Data + "'")
             if (message.utf8Data.substr(0,1) == 'a')    {
                 var got = JSON.parse(message.utf8Data.substr(1))    // chop beginning 'a'
                 if (authenticationMarket) {
-                    if (got[0].i == 2 && got[0].s == 200) {
+                    if (got[0].i == 3 && got[0].s == 200) {
                         console.log('Market Connection Authorized');
                         authenticationMarket = false
+                        Get(connection, 'md/subscribeQuote', { "symbol":"NQU8" })
+                        TradovateEvents.emit('connected')        
                         return true
                     } else {
                         console.log('Connection Authorization Error');
@@ -139,30 +142,21 @@ market.on('connect', function(connection) {
 });
 
 function GotMD(got)   {
-    //if (debug) 
-    console.log(got[0].d);
+    if (debug) console.log(got[0].d);
     got.forEach(function (e,k) {
         if (e.d.quotes)   {
-            //TradovateEvents.emit('price', e.d.quotes[0])
+            TradovateEvents.emit('price', e.d.quotes[0])
         }
     })
 }
 
 function GotEvent(got)   {
+    //console.log(got[0].d)
     if (debug) console.log(got[0].d);
     got.forEach(function (e,k) {
-        //Append('eo', e.d);
         if (e.d.entityType == 'position' && e.d.eventType == 'Updated')   {
-            //Append('posup', e);
             console.log('=' + e.d.entity.netPos);
-            tasks.forEach(function (t,k) {
-                console.log(t);
-                console.log(GetSymbol(e.d.entity.contractId));
-                console.log(e.d);
-                if (t.type == 'copy' && t.from.id == 2712 && t.from.symbol == GetSymbol(e.d.entity.contractId))  {
-                    //Place({ 'accountId': t.to.id, 'action':'Buy', 'symbol':t.to.symbol, 'orderQty':t.multiplier })
-                }
-            })
+            TradovateEvents.emit('positionchange', e.d.entity)
         }
     })
 }
@@ -175,8 +169,9 @@ function Got(got)   {
     if (r.url == 'order/placeorder')   {}
     else if (r.url == 'user/syncrequest')   {
         synced = got[0].d
+        console.log('User Synced');
         //Object.keys(got[0].d).forEach(function (v,k) { console.log(v); })
-        Write('synced', synced)
+        //Write('synced', synced)
     }
 }
 
@@ -220,7 +215,6 @@ function GetSymbol(cid) {
 }
 
 function Authorize(conn)    {
-    //Post('authorize', token.accessToken);
     if (conn.connected) {
         ++mid
         var frame = ['authorize', mid, '', token.accessToken].join("\n")
@@ -234,7 +228,7 @@ function Heartbeat(conn)    {
     conn.sendUTF('[]');
 }
 
-function Place(trade)   {
+exports.Place = function(trade)   {
     var expt = new Date();
     expt.setSeconds(expt.getSeconds() + 10);
 
@@ -243,11 +237,11 @@ function Place(trade)   {
         "timeInForce": "GTD",
         "expireTime": expt.toISOString(),
     }
-    console.log(Object.assign(trade, data));
-    Post(market, 'order/placeorder', Object.assign(trade, data))
+    //console.log(Object.assign(trade, data));
+    Post(apiConnection, 'order/placeorder', Object.assign(trade, data))
 }
 
-function Place0(bs)    {
+exports.Place0 = function(bs)    {
     console.log(bs);
     var data = {
         //"accountSpec": "DEMO03159",
@@ -266,48 +260,23 @@ function Place0(bs)    {
         //"text": "ho!",
         //"activationTime": "2018-01-22T11:46:33.360Z"
     }
-    Post(market, 'order/placeorder', data)
+    Post(apiConnection, 'order/placeorder', data)
 }
 
-function PlaceOCO(trade) {
+exports.PlaceOCO = function(trade) {
     var expt = new Date();
-    expt.setSeconds(expt.getSeconds() + 10);
+    expt.setSeconds(expt.getSeconds() + 100);
 
     var data = {
         "orderType": "Limit",
         "timeInForce": "GTD",
         "expireTime": expt.toISOString(),
+        /*"other": {
+            "expireTime": expt.toISOString(),
+        }*/
     }
-    var data = {
-        //"accountSpec": "string",
-        "accountId": accounts[0].id,
-        //"clOrdId": "string",
-        "action": "Sell",
-        "symbol": "NQH8",
-        "orderQty": 1,
-        "orderType": "Limit",
-        "price": 6846,
-        //"stopPrice": 0,
-        //"maxShow": 0,
-        //"pegDifference": 0,
-        "timeInForce": "GTD",
-        "expireTime": "2018-01-22T11:33.355Z",
-        //"text": "string",
-        //"activationTime": "2018-01-22T10:35:33.355Z",
-        "other": {
-            "action": "Buy",
-            //"clOrdId": "string",
-            "orderType": "Stop",
-            //"price": 6829.5,
-            "stopPrice": 6845,
-            //"maxShow": 0,
-            //"pegDifference": 0,
-            //"timeInForce": "GTD",
-            "expireTime": "2018-01-22T11:33:33.355Z",
-            //"text": "string"
-        }
-    }
-    Post(market, 'order/placeorder', Object.assign(trade, data))
+    console.log(Object.assign(trade, data));
+    Post(apiConnection, 'order/placeorder', Object.assign(trade, data))
     //Post('order/placeoco', data)
 }
 
@@ -326,4 +295,8 @@ function Read(file)    {
         tasks = JSON.parse(data)
     })*/
     return JSON.parse(fs.readFileSync(dir+file, 'utf8'))
+}
+
+exports.Ping = function (p) {
+    console.log(p);
 }
