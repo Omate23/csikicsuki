@@ -54,10 +54,9 @@ api.on('connect', function(connection) {
         console.log('API Connection Closed');
     });
     connection.on('message', function(message) {
-        console.log(message);
-
+        //console.log(message);
         if (message.type === 'utf8') {
-            console.log("API Received: '" + message.utf8Data + "'")
+            //console.log("API Received: '" + message.utf8Data + "'")
             if (message.utf8Data.substr(0,1) == 'a')    {
                 var got = JSON.parse(message.utf8Data.substr(1))    // chop beginning 'a'
                 if (authenticationAPI) {
@@ -87,7 +86,7 @@ api.on('connect', function(connection) {
             else if (message.utf8Data == 'h') Heartbeat(connection)
             else if (message.utf8Data == 'o') Authorize(connection)
             else if (message.utf8Data == 'c') Closed()
-            else { console.log('Unknown frame: ' + message.utf8Data);  }
+            else { if (debug) console.log('Unknown frame: ' + message.utf8Data);  }
         }
         else { console.log('Something non-UTF-8...: ' + message); }
     });
@@ -135,7 +134,7 @@ market.on('connect', function(connection) {
             else if (message.utf8Data == 'h') Heartbeat(connection)
             else if (message.utf8Data == 'o') Authorize(connection)
             else if (message.utf8Data == 'c') Closed()
-            else { console.log('Unknown frame: ' + message.utf8Data);  }
+            else { if (debug) console.log('Unknown frame: ' + message.utf8Data);  }
         }
         else { console.log('Something non-UTF-8...: ' + message); }
     });
@@ -145,7 +144,7 @@ function GotMD(got)   {
     if (debug) console.log(got[0].d);
     got.forEach(function (e,k) {
         if (e.d.quotes)   {
-            TradovateEvents.emit('price', e.d.quotes[0])
+            TradovateEvents.emit('pricechange', e.d.quotes[0])
         }
     })
 }
@@ -155,7 +154,7 @@ function GotEvent(got)   {
     if (debug) console.log(got[0].d);
     got.forEach(function (e,k) {
         if (e.d.entityType == 'position' && e.d.eventType == 'Updated')   {
-            console.log('=' + e.d.entity.netPos);
+            //console.log('=' + e.d.entity.netPos);
             TradovateEvents.emit('positionchange', e.d.entity)
         }
     })
@@ -166,7 +165,9 @@ function Got(got)   {
     if (debug) console.log(got);
     var r = reqs[got[0].i]
     if (debug) console.log(r);
-    if (r.url == 'order/placeorder')   {}
+    if (r.url == 'order/placeorder')   {
+        TradovateEvents.emit('fill', got[0].d)
+    }
     else if (r.url == 'user/syncrequest')   {
         synced = got[0].d
         console.log('User Synced');
@@ -224,21 +225,37 @@ function Authorize(conn)    {
 }
 
 function Heartbeat(conn)    {
-    console.log('[]');
+    //console.log('[]');
     conn.sendUTF('[]');
 }
 
 exports.Place = function(trade)   {
     var expt = new Date();
-    expt.setSeconds(expt.getSeconds() + 10);
+    expt.setSeconds(expt.getSeconds() + 60*60);
 
     var data = {
-        "orderType": "Market",
+//        "orderType": "Market",
         "timeInForce": "GTD",
         "expireTime": expt.toISOString(),
     }
     //console.log(Object.assign(trade, data));
     Post(apiConnection, 'order/placeorder', Object.assign(trade, data))
+}
+
+exports.Modify = function(trade)   {
+    var expt = new Date();
+    expt.setSeconds(expt.getSeconds() + 60*60);
+
+    var data = {
+        "timeInForce": "GTD",
+        "expireTime": expt.toISOString(),
+    }
+    //console.log(Object.assign(trade, data));
+    Post(apiConnection, 'order/modifyorder', Object.assign(trade, data))
+}
+
+exports.Cancel = function(trade)   {
+    Post(apiConnection, 'order/cancelorder', trade)
 }
 
 exports.Place0 = function(bs)    {
@@ -265,7 +282,7 @@ exports.Place0 = function(bs)    {
 
 exports.PlaceOCO = function(trade) {
     var expt = new Date();
-    expt.setSeconds(expt.getSeconds() + 100);
+    expt.setSeconds(expt.getSeconds() + 60*60);
 
     var data = {
         "orderType": "Limit",
@@ -275,7 +292,7 @@ exports.PlaceOCO = function(trade) {
             "expireTime": expt.toISOString(),
         }*/
     }
-    console.log(Object.assign(trade, data));
+    //console.log(Object.assign(trade, data));
     Post(apiConnection, 'order/placeorder', Object.assign(trade, data))
     //Post('order/placeoco', data)
 }
