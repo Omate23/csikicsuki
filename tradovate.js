@@ -113,6 +113,8 @@ market.on('connect', function(connection) {
                         console.log('Market Connection Authorized');
                         authenticationMarket = false
                         Get(connection, 'md/subscribeQuote', { "symbol":"NQU8" })
+                        Get(connection, 'md/subscribeDOM', { "symbol":"NQU8" })
+                        //Get(connection, 'md/subscribeHistogram', { "symbol":"ESU8" })
                         TradovateEvents.emit('connected')        
                         return true
                     } else {
@@ -143,8 +145,14 @@ market.on('connect', function(connection) {
 function GotMD(got)   {
     if (debug) console.log(got[0].d);
     got.forEach(function (e,k) {
-        if (e.d.quotes)   {
+        if (e.d.doms)   {
+            TradovateEvents.emit('domchange', e.d.doms)
+        }
+        else if (e.d.quotes)   {
             TradovateEvents.emit('pricechange', e.d.quotes[0])
+        }
+        else if (e.d.histograms)   {
+            TradovateEvents.emit('histogramchange', e.d.histograms[0])
         }
     })
 }
@@ -231,14 +239,15 @@ function Heartbeat(conn)    {
 
 exports.Place = function(trade)   {
     var expt = new Date();
-    expt.setSeconds(expt.getSeconds() + 60*60);
+    //expt.setSeconds(expt.getSeconds() + 60*60);
+    expt.setSeconds(expt.getSeconds() + 15);
 
     var data = {
 //        "orderType": "Market",
         "timeInForce": "GTD",
         "expireTime": expt.toISOString(),
     }
-    //console.log(Object.assign(trade, data));
+    console.log(Object.assign(trade, data));
     Post(apiConnection, 'order/placeorder', Object.assign(trade, data))
 }
 

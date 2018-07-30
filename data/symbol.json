@@ -1,0 +1,4 @@
+{
+    "NQU8" : { "ticksize": 0.25, "tickvalue": 5 },
+    "6EU8" : { "ticksize": 0.00005, "tickvalue": 12.5 }
+}
