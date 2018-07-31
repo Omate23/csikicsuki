@@ -247,7 +247,7 @@ exports.Place = function(trade)   {
         "timeInForce": "GTD",
         "expireTime": expt.toISOString(),
     }
-    console.log(Object.assign(trade, data));
+    //console.log(Object.assign(trade, data));
     Post(apiConnection, 'order/placeorder', Object.assign(trade, data))
 }
 
