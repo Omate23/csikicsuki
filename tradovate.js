@@ -11,6 +11,9 @@ const EventEmitter = require('events').EventEmitter;
 const TradovateEvents = new EventEmitter;
 exports.Events = TradovateEvents;
 
+var control = require('./control');
+var settings = control.settings
+
 var token
 var apiConnection, marketConnection
 var reqs = []
@@ -112,9 +115,9 @@ market.on('connect', function(connection) {
                     if (got[0].i == 3 && got[0].s == 200) {
                         console.log('Market Connection Authorized');
                         authenticationMarket = false
-                        Get(connection, 'md/subscribeQuote', { "symbol":"NQU8" })
-                        Get(connection, 'md/subscribeDOM', { "symbol":"NQU8" })
-                        //Get(connection, 'md/subscribeHistogram', { "symbol":"ESU8" })
+                        if (settings.quote) Get(connection, 'md/subscribeQuote', { "symbol": settings.symbol })
+                        if (settings.DOM) Get(connection, 'md/subscribeDOM', { "symbol": settings.symbol })
+                        if (settings.histogram) Get(connection, 'md/subscribeHistogram', { "symbol": settings.symbol })
                         TradovateEvents.emit('connected')        
                         return true
                     } else {
@@ -164,6 +167,9 @@ function GotEvent(got)   {
         if (e.d.entityType == 'position' && e.d.eventType == 'Updated')   {
             //console.log('=' + e.d.entity.netPos);
             TradovateEvents.emit('positionchange', e.d.entity)
+        }
+        else if (e.d.entityType == 'fill' && e.d.eventType == 'Created')   {
+            TradovateEvents.emit('fillevent', e.d.entity)
         }
     })
 }

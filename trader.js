@@ -3,18 +3,24 @@
 var fs = require('fs');
 var tradovate = require('./tradovate');
 var utils = require('./tradutils');
+var Level = require('./Level');
 
 var control = require('./control');
-var directions = directions
+var directions = control.directions
 var settings = control.settings
 var symbol = control.symbol
-
+var orderId, contractId
 
 //LOGIC:
-var dom0 = 10, sumneeded = 45, countneeded = 3, signalneeded = 1;
-var lc=0; sc=0; ls=0; ss=0;
-var buyc=0; sellc=0;
-var tp = 15, sl = 25 // in dollars
+var tp = 15, sl = 35 // in dollars
+var base = 0;
+var garbageTime = 20;   // clears "recent" volume changes
+var bulls=0, bears=0
+var Bid, Offer
+var levels = []
+
+//ACTION:
+var diff = 1.33, larger=50, smaller=30
 
 
 
@@ -29,76 +35,123 @@ tradovate.Events.on('domchange', function (data) {
         //console.log('control.position: ' + control.position);
         return
     }
-    if (data[0].bids[0].size >= dom0)  {
-        console.log('b ' + data[0].bids[0].size);
-        lc++; sc=0; ss=0;
-        ls += data[0].bids[0].size
 
-        if (ls >= sumneeded && lc >= countneeded)  {
-            lc=0; sc=0; ls=0; ss=0;
-            buyc++; sellc=0;
-            console.log('Buy! ' + buyc);
-        }
-    }
-    if (data[0].offers[0].size >= dom0)    {
-        console.log('o ' + data[0].offers[0].size);
-        sc++; lc=0; ls=0;
-        ss += data[0].offers[0].size
+    //console.log(control);
+    
 
-        if (ss >= sumneeded && sc >= countneeded)  {
-            lc=0; sc=0; ls=0; ss=0;
-            buyc=0; sellc++;
-            console.log('Sell! ' + sellc);        
-        }
-    }
-
-    if (buyc >= signalneeded) {
-        control.direction = 1;
-        control.direction = 1;
-        control.price = data[0].bids[0].price
-        buyc=0; sellc=0;
-    } else if (sellc >= signalneeded) {
-        control.direction = 2;
-        control.direction = 2;
-        control.price = data[0].offers[0].price
-        buyc=0; sellc=0;
-    }
     if (control.direction && !control.position) {
         //tradovate.Place({ 'accountId':s.accountId, 'action':control.directions[control.direction], 'symbol':s.symbol, 'orderQty':s.lots,
         //    'orderType':'Limit', 'control.price':control.price })
-        tradovate.Place({ 'accountId':settings.accountId, 'action':control.directions[control.direction],
+        tradovate.Place({ 'accountId':settings.accountId, 'action':directions[control.direction],
             'symbol':settings.symbol, 'orderQty':settings.lots,
             'orderType':'Market' })
-
-        lc=0; sc=0; ls=0; ss=0;
-        buyc=0; sellc=0;
-        control.position = 9999;
+        //process.exit()
+        control.position = 'x';
+        bears=0; bulls=0;
+        levels.forEach(function (l,i) { levels[i].clearRecent() })
     }
 })
 
 tradovate.Events.on('pricechange', function (data) {
     //console.log(data);
+    Bid = data.entries.Bid.price
+    Offer = data.entries.Offer.price
+    //console.log('b/o', Bid, Offer);
+    
     if (!control.position) return
 
-    utils.CloseOnTP(data, tp)
-    utils.CloseOnSL(data, sl)
-        
+    if (control.price)  {
+        utils.CloseOnTP(data, tp)
+        utils.CloseOnSL(data, sl)
+    }
     //console.log('dir: ' + control.direction);    
 })
 
 tradovate.Events.on('histogramchange', function (data) {
-    console.log(data);
-    if (!control.position) return
+    if (data.refresh) {     // INITIAL
+        base = data.base
+        for (var k in data.items) {
+            levels.push(new Level(k, data.items[k]))
+        }
+    } else {    // UPDATES
+        //console.log(data.items);
+        //console.log('B/O', Bid, Offer);
+        var found = false
+        var price
+        var bid = Bid, offer = Offer
+        for (var k in data.items) {
+            bears=0; bulls=0;
+            levels.forEach(function (l,i) {
+                if (levels[i].recentBid + levels[i].recentOffer > 0
+                    && levels[i].time < new Date() / 1000 - garbageTime) {
+                    //console.log('clear: ' + levels[i].offset);                    
+                    levels[i].clearRecent()
+                }
 
-    utils.CloseOnTP(data, tp)
-    utils.CloseOnSL(data, sl)
-        
-    //console.log('dir: ' + control.direction);    
+                if (l.offset == k) {    // current found
+                    found = true
+                    price = base + l.offset * symbol.ticksize
+
+                    if (!control.position && price == bid) {
+                        levels[i].updateBid(data.items[k])
+                        // console.log('b', Bid, levels[i].recentBid);
+                    }
+                    else if (!control.position && price == offer) {
+                        levels[i].updateOffer(data.items[k])
+                        // console.log('o', Offer, levels[i].recentOffer);
+                    }
+                    else {
+                        levels[i].update(data.items[k])
+                        // console.log('other', levels[i].offset);
+                    }
+                }
+
+                if (!control.position)  {
+                    bulls += levels[i].recentBid
+                    bears += levels[i].recentOffer
+                }
+
+            })
+            if (!found) {
+                levels.push(new Level(k, data.items[k]))
+            }
+        }
+        console.log(bulls, bears, bulls-bears);
+
+        if (bulls > bears * diff && bulls>larger && bears>smaller) {
+            control.direction = 2
+            console.log('sell!');
+            /*tradovate.Place({ 'accountId':settings.accountId, 'action':control.directions[control.direction],
+                'symbol':settings.symbol, 'orderQty':settings.lots,
+                'orderType':'Market' })*/
+        }
+        if (bears > bulls * diff && bears>larger && bulls>smaller) {
+            control.direction = 1
+            console.log('buy!');
+            /*tradovate.Place({ 'accountId':settings.accountId, 'action':control.directions[control.direction],
+                'symbol':settings.symbol, 'orderQty':settings.lots,
+                'orderType':'Market' })*/
+        }
+    }
 })
 
 tradovate.Events.on('fill', function (data) {
     orderId = data.orderId
     //console.log(orderId);
+    //var closePrice = (control.direction == 1) ? Offer : Bid;
+    // utils.Log([closePrice, new Date().timeNow()].join(';') + "\n")
+
+})
+
+tradovate.Events.on('fillevent', function (data) {
+    //console.log(data);    
+    if (contractId && contractId == data.contractId)    {
+        data.contractId = 0;
+        //var closePrice = (control.direction == 1) ? Offer : Bid;
+        utils.Log([data.price, new Date().timeNow()].join(';') + "\n")
+    } else {
+        contractId = data.contractId
+    }
 })
 
 tradovate.Events.on('positionchange', function (data) {
@@ -106,6 +159,7 @@ tradovate.Events.on('positionchange', function (data) {
     //console.log('dir:' + control.direction);
     control.position = data.netPos
     if (data.netPos == 0)  {
+        console.log(data);
         //control.direction = ++control.direction % 2;    // alternating
         //if (control.direction == 1) control.direction = 2; else if (control.direction == 2) control.direction = 1
         //console.log(control.directions[control.direction]);
@@ -119,8 +173,22 @@ tradovate.Events.on('positionchange', function (data) {
     else if (data.netPos == -1)  {
         control.price = data.netPrice
     }
-    //utils.ctrl()
+    if (Math.abs(data.netPos) == 1)    {
+        utils.Log([settings.logstring, new Date().today(), settings.accountId, settings.symbol, settings.lots, directions[control.direction], control.price, new Date().timeNow(), ''].join(';'))
+    }
+    //console.log(control);
     //process.exit(0)
-    //console.log(control.price);
+    
 });
 
+
+// For todays date;
+Date.prototype.today = function () { 
+    //return ((this.getDate() < 10)?"0":"") + this.getDate() +"-"+(((this.getMonth()+1) < 10)?"0":"") + (this.getMonth()+1) +"-"+ this.getFullYear();
+    return this.getFullYear() + "-" + (((this.getMonth()+1) < 10)?"0":"") + (this.getMonth()+1) + "-" + ((this.getDate() < 10)?"0":"") + this.getDate();
+}
+
+// For the time now
+Date.prototype.timeNow = function () {
+    return ((this.getHours() < 10)?"0":"") + this.getHours() +":"+ ((this.getMinutes() < 10)?"0":"") + this.getMinutes() +":"+ ((this.getSeconds() < 10)?"0":"") + this.getSeconds();
+}

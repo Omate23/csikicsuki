@@ -86,16 +86,6 @@ tradovate.Events.on('pricechange', function (data) {
     //console.log('dir: ' + control.direction);    
 })
 
-tradovate.Events.on('histogramchange', function (data) {
-    console.log(data);
-    if (!control.position) return
-
-    utils.CloseOnTP(data, tp)
-    utils.CloseOnSL(data, sl)
-        
-    //console.log('dir: ' + control.direction);    
-})
-
 tradovate.Events.on('fill', function (data) {
     orderId = data.orderId
     //console.log(orderId);

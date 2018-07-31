@@ -1,6 +1,10 @@
 {
+    "logstring": "Histo1",
     "accountId": 2711,
     "live": 0,
     "symbol": "NQU8",
-    "lots": 1
+    "lots": 1,
+    "quote": true,
+    "DOM": true,
+    "histogram": true
 }
