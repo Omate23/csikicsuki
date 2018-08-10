@@ -12,7 +12,7 @@ var symbol = control.symbol
 var orderId, contractId
 
 //LOGIC:
-var tp = 15, sl = 35 // in dollars
+var tp = 20, sl = 30 // in dollars
 var base = 0;
 var garbageTime = 20;   // clears "recent" volume changes
 var bulls=0, bears=0
@@ -20,7 +20,7 @@ var Bid, Offer
 var levels = []
 
 //ACTION:
-var diff = 1.33, larger=50, smaller=30
+var diff = 1.2, larger=100, smaller=50
 
 
 
@@ -146,9 +146,9 @@ tradovate.Events.on('fill', function (data) {
 tradovate.Events.on('fillevent', function (data) {
     //console.log(data);    
     if (contractId && contractId == data.contractId)    {
-        data.contractId = 0;
+        contractId = 0;
         //var closePrice = (control.direction == 1) ? Offer : Bid;
-        utils.Log([data.price, new Date().timeNow()].join(';') + "\n")
+        utils.Log([data.price, new Date().timeNow()])
     } else {
         contractId = data.contractId
     }
@@ -159,7 +159,7 @@ tradovate.Events.on('positionchange', function (data) {
     //console.log('dir:' + control.direction);
     control.position = data.netPos
     if (data.netPos == 0)  {
-        console.log(data);
+        //console.log(data);
         //control.direction = ++control.direction % 2;    // alternating
         //if (control.direction == 1) control.direction = 2; else if (control.direction == 2) control.direction = 1
         //console.log(control.directions[control.direction]);
@@ -174,7 +174,7 @@ tradovate.Events.on('positionchange', function (data) {
         control.price = data.netPrice
     }
     if (Math.abs(data.netPos) == 1)    {
-        utils.Log([settings.logstring, new Date().today(), settings.accountId, settings.symbol, settings.lots, directions[control.direction], control.price, new Date().timeNow(), ''].join(';'))
+        utils.Log([settings.logstring, new Date().today(), settings.accountId, settings.symbol, settings.lots, directions[control.direction], control.price, new Date().timeNow()])
     }
     //console.log(control);
     //process.exit(0)

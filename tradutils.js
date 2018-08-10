@@ -1,4 +1,5 @@
 var fs = require('fs');
+var request = require('request');
 var tradovate = require('./tradovate');
 var control = require('./control');
 
@@ -9,7 +10,7 @@ var symbol = control.symbol
 
 var today
 var timeNow
-
+var logbits = []
 
 var tpc=0,slc=0;    // TP, SL counters
 
@@ -73,10 +74,23 @@ function Append(file, data)    {
     })
 }
 
-function Log(str)  {
+function Log(arr)  {
     //var utc = new Date().toJSON().slice(0,10).replace(/-/g,'-');    
     if (!today) today = new Date().today()
-    Append([settings.logstring, today].join('_') + '.log', str)
+    logbits = logbits.concat(arr)
+    
+    if (logbits.length == 10)   {   // entry complete
+        var logrow = logbits.join(';')
+        Append([settings.logstring, today].join('_') + '.log', logrow + '\n')
+        request.post('https://connecting.hu/trading/tradovate/logger.php', { form: { data: logrow } }, function(err, res, body) {
+            if (err) { return console.log(err); }
+            //console.log(res);
+            if (body) { console.log('Szilankok.hu> ') ; console.log(body) }
+        });
+        logbits = []
+    }
+    console.log(logbits.length);
+    
 }
 module.exports.Log = Log;
 
