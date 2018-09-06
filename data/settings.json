@@ -6,5 +6,6 @@
     "lots": 1,
     "quote": true,
     "DOM": true,
-    "histogram": true
+    "histogram": true,
+    "chart": false
 }

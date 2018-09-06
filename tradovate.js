@@ -89,9 +89,10 @@ api.on('connect', function(connection) {
             else if (message.utf8Data == 'h') Heartbeat(connection)
             else if (message.utf8Data == 'o') Authorize(connection)
             else if (message.utf8Data == 'c') Closed()
-            else { if (debug) console.log('Unknown frame: ' + message.utf8Data);  }
+            else if (debug) console.log('Unknown frame: ' + message.utf8Data);
+        } else { 
+            console.log('Something non-UTF-8...: ' + message);
         }
-        else { console.log('Something non-UTF-8...: ' + message); }
     });
 });
 
@@ -118,6 +119,22 @@ market.on('connect', function(connection) {
                         if (settings.quote) Get(connection, 'md/subscribeQuote', { "symbol": settings.symbol })
                         if (settings.DOM) Get(connection, 'md/subscribeDOM', { "symbol": settings.symbol })
                         if (settings.histogram) Get(connection, 'md/subscribeHistogram', { "symbol": settings.symbol })
+                        if (settings.chart) Get(connection, 'md/getChart', {
+                            "symbol":settings.symbol,
+                            "chartDescription": {
+                                "underlyingType":"MinuteBar", // Available values: Tick, DailyBar, MinuteBar, Custom, DOM
+                                "elementSize":15,
+                                "elementSizeUnit":"UnderlyingUnits", // Available values: Volume, Range, UnderlyingUnits, Renko, MomentumRange, PointAndFigure, OFARange
+                                "withHistogram": false
+                            },
+                            "timeRange": {
+                                // All fields in "timeRange" are optional, but at least anyone is required
+                                //"closestTimestamp":"2018-08-10T10:00Z",
+                                //"closestTickId":123,
+                                //"asFarAsTimestamp":"2018-08-15T18:00Z",
+                                "asMuchAsElements":50
+                            },
+                        })
                         TradovateEvents.emit('connected')        
                         return true
                     } else {
@@ -129,6 +146,9 @@ market.on('connect', function(connection) {
                     return true
                 } else if (got[0].e == 'md') {     // Market data
                     GotMD(got)
+                    return true
+                } else if (got[0].e == 'chart') {     // Market data
+                    GotChart(got)
                     return true
                 } else {
                     console.log('Not OK MD!');
@@ -147,6 +167,22 @@ market.on('connect', function(connection) {
 
 function GotMD(got)   {
     if (debug) console.log(got[0].d);
+    got.forEach(function (e,k) {
+        if (e.d.doms)   {
+            TradovateEvents.emit('domchange', e.d.doms)
+        }
+        else if (e.d.quotes)   {
+            TradovateEvents.emit('pricechange', e.d.quotes[0])
+        }
+        else if (e.d.histograms)   {
+            TradovateEvents.emit('histogramchange', e.d.histograms[0])
+        }
+    })
+}
+
+function GotChart(got)   {
+    if (debug) console.log(got[0].d);
+    return;
     got.forEach(function (e,k) {
         if (e.d.doms)   {
             TradovateEvents.emit('domchange', e.d.doms)
