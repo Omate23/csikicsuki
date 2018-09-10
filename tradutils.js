@@ -17,7 +17,7 @@ var tpc=0,slc=0;    // TP, SL counters
 exports.ctrl = function() { console.log(control); }
 
 
-function Close1(direction)    {  // closes with opposite market order
+function Close1()    {  // closes with opposite market order
     control.price = 0;
     control.position = '';
     //control.direction = ++control.direction % 2;    // alternating
@@ -27,7 +27,6 @@ function Close1(direction)    {  // closes with opposite market order
     //control.direction = ++control.direction % 2;    // set back
     //if (control.direction == 1) control.direction = 2; else if (control.direction == 2) control.direction = 1
 }
-
 
 function CloseOnTP(data, tp)    {
     var profit = GetProfit(data)
@@ -50,6 +49,19 @@ function CloseOnSL(data, sl)    {
     }
 }
 module.exports.CloseOnSL = CloseOnSL;
+
+function CloseAll() {
+    if (control.position > 0)   {
+        tradovate.Place({ 'accountId': settings.accountId, 'orderType':'Market', 'action':directions[2], 'symbol':settings.symbol, 'orderQty':control.position })
+    }
+    else if (control.position < 0)   {
+        tradovate.Place({ 'accountId': settings.accountId, 'orderType':'Market', 'action':directions[1], 'symbol':settings.symbol, 'orderQty':-control.position })
+    }
+    control.position = ''
+    control.direction = ''
+    //console.log(control);
+}
+module.exports.CloseAll = CloseAll;
 
 function GetProfit(data) {
     var profit
@@ -75,6 +87,7 @@ function Append(file, data)    {
 }
 
 function Log(arr)  {
+return
     //var utc = new Date().toJSON().slice(0,10).replace(/-/g,'-');    
     if (!today) today = new Date().today()
     logbits = logbits.concat(arr)

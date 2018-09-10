@@ -285,7 +285,7 @@ exports.Place = function(trade)   {
     expt.setSeconds(expt.getSeconds() + 15);
 
     var data = {
-//        "orderType": "Market",
+        "orderType": "Market",
         "timeInForce": "GTD",
         "expireTime": expt.toISOString(),
     }

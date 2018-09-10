@@ -24,7 +24,6 @@ var diff = 1.2, larger=100, smaller=50
 
 
 
-
 tradovate.Events.on('connected', function () {
     //console.log('conntd');
     //tradovate.Place({ 'accountId': settings.accountId, 'action':control.directions[control.direction], 'symbol':settings.symbol, 'orderQty':settings.lots });
