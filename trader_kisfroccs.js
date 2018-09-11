@@ -14,7 +14,7 @@ var logq = []; logqOpened = 0; logqClosed = 0;
 
 
 //LOGIC:
-var kisav = 5; besav = 9;
+var besav = 16; kisav = 9;
 
 //ACTION:
 
@@ -159,6 +159,7 @@ function Market()   {
     var order = { 'accountId': settings.accountId, 'action':control.directions[control.direction], 'symbol':settings.symbol, 'orderQty':settings.lots }
     tradovate.Place(order);
     control.position = ''
-    logq[logqOpened] = new LogQ(order, settings.logstring);
+    var logstring = [settings.logstring, besav, kisav].join('-');
+    logq[logqOpened] = new LogQ(order, logstring);
 }
 
