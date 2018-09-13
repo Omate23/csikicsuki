@@ -11,15 +11,18 @@ const EventEmitter = require('events').EventEmitter;
 const TradovateEvents = new EventEmitter;
 exports.Events = TradovateEvents;
 
-var control = require('./control');
-var settings = control.settings
+var settings = JSON.parse(fs.readFileSync('./data/settings.json', 'utf8'));
+//settings.symbol = "NQU8";
+//console.log(settings);
 
+var alreadySubscribed = [];
 var token
 var apiConnection, marketConnection
 var reqs = []
 var authenticationAPI = false, authenticationMarket = false;  // auth in progress
-var mid = 0; // message id
+var mid = 0; // serial message id for Tradovate API
 var debug = false
+
 
 request.post({
         url: 'https://demo-api-d.tradovate.com/v1/auth/accesstokenrequest',
@@ -27,7 +30,7 @@ request.post({
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         },
-        body: JSON.stringify({ name: 'MOrdody', password: 'Vahot$11' })
+        body: JSON.stringify({ name: settings.login, password: settings.password })
     },
     function (error, response, body) {
         //console.log(body)
@@ -35,7 +38,7 @@ request.post({
             token = JSON.parse(body)
             authenticationAPI = true
             api.connect('wss://demo-api-d.tradovate.com/v1/websocket');
-        }        
+        }
     }
 );
 
@@ -53,7 +56,7 @@ api.on('connect', function(connection) {
         console.log("API Connection Error: " + error.toString());
     });
     connection.on('close', function(message) {
-        console.log(': '+message);
+        //console.log(': '+message);
         console.log('API Connection Closed');
     });
     connection.on('message', function(message) {
@@ -66,7 +69,7 @@ api.on('connect', function(connection) {
                     if (got[0].i == 1 && got[0].s == 200) {
                         console.log('API Connection Authorized');
                         authenticationAPI = false
-                        Post(connection, 'user/syncrequest', { "users": [3158] });
+                        Post(connection, 'user/syncrequest', { "users": settings.user });
                         authenticationMarket = true
                         market.connect('wss://md-api-d.tradovate.com/v1/websocket');
                         return true
@@ -90,7 +93,7 @@ api.on('connect', function(connection) {
             else if (message.utf8Data == 'o') Authorize(connection)
             else if (message.utf8Data == 'c') Closed()
             else if (debug) console.log('Unknown frame: ' + message.utf8Data);
-        } else { 
+        } else {
             console.log('Something non-UTF-8...: ' + message);
         }
     });
@@ -107,7 +110,6 @@ market.on('connect', function(connection) {
     });
     connection.on('message', function(message) {
         //console.log(message);
-
         if (message.type === 'utf8') {
             //console.log("Market Received: '" + message.utf8Data + "'")
             if (message.utf8Data.substr(0,1) == 'a')    {
@@ -116,26 +118,7 @@ market.on('connect', function(connection) {
                     if (got[0].i == 3 && got[0].s == 200) {
                         console.log('Market Connection Authorized');
                         authenticationMarket = false
-                        if (settings.quote) Get(connection, 'md/subscribeQuote', { "symbol": settings.symbol })
-                        if (settings.DOM) Get(connection, 'md/subscribeDOM', { "symbol": settings.symbol })
-                        if (settings.histogram) Get(connection, 'md/subscribeHistogram', { "symbol": settings.symbol })
-                        if (settings.chart) Get(connection, 'md/getChart', {
-                            "symbol":settings.symbol,
-                            "chartDescription": {
-                                "underlyingType":"MinuteBar", // Available values: Tick, DailyBar, MinuteBar, Custom, DOM
-                                "elementSize":15,
-                                "elementSizeUnit":"UnderlyingUnits", // Available values: Volume, Range, UnderlyingUnits, Renko, MomentumRange, PointAndFigure, OFARange
-                                "withHistogram": false
-                            },
-                            "timeRange": {
-                                // All fields in "timeRange" are optional, but at least anyone is required
-                                //"closestTimestamp":"2018-08-10T10:00Z",
-                                //"closestTickId":123,
-                                //"asFarAsTimestamp":"2018-08-15T18:00Z",
-                                "asMuchAsElements":50
-                            },
-                        })
-                        TradovateEvents.emit('connected')        
+                        TradovateEvents.emit('connected')
                         return true
                     } else {
                         console.log('Connection Authorization Error');
@@ -164,6 +147,32 @@ market.on('connect', function(connection) {
         else { console.log('Something non-UTF-8...: ' + message); }
     });
 });
+
+exports.Subscribe = (type, symbol) => {
+    if (alreadySubscribed[type+symbol]) return
+    alreadySubscribed[type+symbol] = 1
+    console.log('Subscribing ' + type + ' for ' + symbol);
+
+    if (type == 'quote') Get(marketConnection, 'md/subscribeQuote', { "symbol": symbol })
+    if (type == 'DOM') Get(marketConnection, 'md/subscribeDOM', { "symbol": symbol })
+    if (type == 'histogram') Get(marketConnection, 'md/subscribeHistogram', { "symbol": symbol })
+    if (type == 'chart') Get(marketConnection, 'md/getChart', {
+        "symbol": symbol,
+        "chartDescription": {
+            "underlyingType":"MinuteBar", // Available values: Tick, DailyBar, MinuteBar, Custom, DOM
+            "elementSize":15,
+            "elementSizeUnit":"UnderlyingUnits", // Available values: Volume, Range, UnderlyingUnits, Renko, MomentumRange, PointAndFigure, OFARange
+            "withHistogram": false
+        },
+        "timeRange": {
+            // All fields in "timeRange" are optional, but at least anyone is required
+            //"closestTimestamp":"2018-08-10T10:00Z",
+            //"closestTickId":123,
+            //"asFarAsTimestamp":"2018-08-15T18:00Z",
+            "asMuchAsElements":50
+        },
+    })
+}
 
 function GotMD(got)   {
     if (debug) console.log(got[0].d);
@@ -205,18 +214,19 @@ function GotEvent(got)   {
             TradovateEvents.emit('positionchange', e.d.entity)
         }
         else if (e.d.entityType == 'fill' && e.d.eventType == 'Created')   {
-            TradovateEvents.emit('fillevent', e.d.entity)
+            TradovateEvents.emit('fill', e.d.entity)
         }
     })
 }
 
 
 function Got(got)   {
+    //console.log(got)
     if (debug) console.log(got);
     var r = reqs[got[0].i]
     if (debug) console.log(r);
     if (r.url == 'order/placeorder')   {
-        TradovateEvents.emit('fill', got[0].d)
+        TradovateEvents.emit('order', got[0].d)
     }
     else if (r.url == 'user/syncrequest')   {
         synced = got[0].d
@@ -255,16 +265,6 @@ function Post(conn, url, bodyarr, store)  {
     } //else setTimeout(Msg(url, url, query, body), 50);
 }
 
-function GetSymbol(cid) {
-    var symname
-    synced.contracts.forEach(function (c,k) {
-        console.log(c.id, cid, c.name);
-        console.log(c.id==cid);
-        if (c.id == cid) { symname = c.name; return }
-    })
-    return symname
-}
-
 function Authorize(conn)    {
     if (conn.connected) {
         ++mid
@@ -280,10 +280,13 @@ function Heartbeat(conn)    {
 }
 
 exports.Place = function(trade)   {
+    if (trade.action === 1) trade.action = 'Buy';
+    else if (trade.action === 2) trade.action = 'Sell';
+
     var expt = new Date();
     //expt.setSeconds(expt.getSeconds() + 60*60);
     expt.setSeconds(expt.getSeconds() + 15);
-    
+
     var data = {
         "orderType": "Market",
         "timeInForce": "GTD",
@@ -291,61 +294,6 @@ exports.Place = function(trade)   {
     }
     //console.log(Object.assign(trade, data));
     Post(apiConnection, 'order/placeorder', Object.assign(trade, data))
-}
-
-exports.Modify = function(trade)   {
-    var expt = new Date();
-    expt.setSeconds(expt.getSeconds() + 60*60);
-
-    var data = {
-        "timeInForce": "GTD",
-        "expireTime": expt.toISOString(),
-    }
-    //console.log(Object.assign(trade, data));
-    Post(apiConnection, 'order/modifyorder', Object.assign(trade, data))
-}
-
-exports.Cancel = function(trade)   {
-    Post(apiConnection, 'order/cancelorder', trade)
-}
-
-exports.Place0 = function(bs)    {
-    console.log(bs);
-    var data = {
-        //"accountSpec": "DEMO03159",
-        "accountId": accounts[0].id,
-        //"clOrdId": "string",
-        "action": bs,//"Buy",
-        "symbol": "NQH8",
-        "orderQty": 1,
-        "orderType": "Market",
-        //"price": 6830.0,
-        //"stopPrice": 6829.5,
-        //"maxShow": 1,
-        //"pegDifference": 0,
-        "timeInForce": "GTD",
-        "expireTime": "2018-01-23T10:20:33.360Z",
-        //"text": "ho!",
-        //"activationTime": "2018-01-22T11:46:33.360Z"
-    }
-    Post(apiConnection, 'order/placeorder', data)
-}
-
-exports.PlaceOCO = function(trade) {
-    var expt = new Date();
-    expt.setSeconds(expt.getSeconds() + 60*60);
-
-    var data = {
-        "orderType": "Limit",
-        "timeInForce": "GTD",
-        "expireTime": expt.toISOString(),
-        /*"other": {
-            "expireTime": expt.toISOString(),
-        }*/
-    }
-    //console.log(Object.assign(trade, data));
-    Post(apiConnection, 'order/placeorder', Object.assign(trade, data))
-    //Post('order/placeoco', data)
 }
 
 function ObjectToQueryString(o) {
@@ -354,17 +302,4 @@ function ObjectToQueryString(o) {
         return k + '=' + o[k]
     }).join('&');
     return qs
-}
-
-function Read(file)    {
-    var dir = './data/'
-    /*fs.readFile(dir+file, 'utf8', function(err, data) {
-        if (err) { return console.log('File read error: ' + err); }
-        tasks = JSON.parse(data)
-    })*/
-    return JSON.parse(fs.readFileSync(dir+file, 'utf8'))
-}
-
-exports.Ping = function (p) {
-    console.log(p);
 }

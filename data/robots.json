@@ -1,0 +1,52 @@
+[
+    {
+        "algo": "kisfroccs",
+        "name": "KisFroccs-11-6",
+        "symbol": "NQU8",
+        "lots": 1,
+        "parameters": {
+            "besav": 2,
+            "kisav": 2
+        },
+        "subscriptions": {
+            "quote": true,
+            "DOM": false,
+            "histogram": false,
+            "chart": false
+        },
+        "active": true
+    },    {
+        "algo": "kisfroccs",
+        "name": "KisFroccs-16-9",
+        "symbol": "NQU8",
+        "lots": 1,
+        "parameters": {
+            "besav": 16,
+            "kisav": 9
+        },
+        "subscriptions": {
+            "quote": true,
+            "DOM": false,
+            "histogram": false,
+            "chart": false
+        },
+        "active": true
+    },
+    {
+        "algo": "kisfroccs",
+        "name": "KisFroccs-21-12",
+        "symbol": "NQU8",
+        "lots": 1,
+        "parameters": {
+            "besav": 21,
+            "kisav": 12
+        },
+        "subscriptions": {
+            "quote": true,
+            "DOM": false,
+            "histogram": false,
+            "chart": false
+        },
+        "active": false
+    }
+]

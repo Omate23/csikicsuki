@@ -1,6 +1,6 @@
 var fs = require('fs');
 var request = require('request');
-var tradovate = require('./tradovate');
+//var tradovate = require('./tradovate');
 var control = require('./control');
 
 // read-only vars:
