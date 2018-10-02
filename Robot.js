@@ -1,4 +1,5 @@
 //var fs = require('fs');
+var request = require('request');
 var tradovate = require('./tradovate1');
 var Trade = require('./Trade');
 
@@ -15,66 +16,124 @@ function Robot(r, settings) {
     //this.settings = JSON.parse(fs.readFileSync(dir + r.algo + '.json', 'utf8'));
 
     this.position = 0;
+    this.oldposition = 0;
     this.direction = '';
     this.price = '';
 
-    this.ordering = false;  // order sent, waiting for orderId
+    // when orderid received, we use these to decide original intention
+    this.opening = false;  // closing order sent
+    this.closing = false;  // closing order sent
+
     this.trades = [];
 }
 
-Robot.prototype.getSettings = function () { return this.settings }
+/*Robot.prototype.getSettings = function () { return this.settings }*/
 
-Robot.prototype.getTradeByOrderId = function (oid) {
+Robot.prototype.getTradeByOpenOrderId = function (oid) {
     for (var ti=0, tlen=this.trades.length; ti<tlen; ++ti) {
-        if (this.trades[ti].orderId == oid) return this.trades[ti]
+        if (this.trades[ti].openOrderId == oid) return this.trades[ti]
     }
     return false
 }
 
-Robot.prototype.getTradeByContractId = function (cid) {
+Robot.prototype.getTradeByCloseOrderId = function (oid) {
+    for (var ti=0, tlen=this.trades.length; ti<tlen; ++ti) {
+        console.log('getcloseorderID', oid, ti, this.trades[ti]);
+        if (this.trades[ti].closeOrderId == oid) return this.trades[ti]
+    }
+    return false
+}
+
+/*Robot.prototype.getTradeByContractId = function (cid) {
     for (var ti=0, tlen=this.trades.length; ti<tlen; ++ti) {
         if (this.trades[ti].contractId == cid) return this.trades[ti]
     }
     return false
-}
+}*/
 
 Robot.prototype.Order = function(orderId) {
-    this.trades.push(new Trade(this.id, orderId))
-    console.log(this.trades);
+    if (this.opening)   {
+        this.trades.push(new Trade(this.id, orderId, this.symbol))
+        console.log(this.name, 'opening order received', orderId);
+    }
+    else if (this.closing)   {
+        // find first non-closed
+        for (var ti=0, tlen=this.trades.length; ti<tlen; ++ti) {
+            if (this.trades[ti].closeOrderId) continue;
+            this.trades[ti].closeOrderId = orderId;
+            break;
+        }
+        console.log(this.name, 'closing order received');
+    }
 }
 
 Robot.prototype.OpenFill = function(data) {
-    var trade = this.getTradeByOrderId(data.orderId);
+    var trade = this.getTradeByOpenOrderId(data.orderId);
     if (!trade) return false
+    this.opening = false
     trade.Open(data)
-    console.log(this.trades);
+    //console.log('dir ', this.direction);
+    this.position = (this.oldposition || 0) + ((this.direction == 1) ? 1 : -1);
+    //console.log('pos ', this.position);
+    //console.log(this.trades);
 }
 
 Robot.prototype.CloseFill = function(data) {
-    var trade = this.getTradeByOrderId(data.orderId);
+    var trade = this.getTradeByCloseOrderId(data.orderId);
     if (!trade) return false
-    trade.Close(data)
-    console.log(this.trades);
+    this.closing = false
+    this.trades.forEach(trade => {  // close all
+        trade.Close(data)
+        this.WriteDB(trade);
+    });
+    this.trades = []
+    //console.log(this.trades);
+    this.position = 0;
 }
 
 Robot.prototype.Open = function () {
+    this.opening = true
     //console.log(this);
     var order = { 'accountId': this.env.accountId, 'action': this.direction, 'symbol': this.symbol, 'orderQty': this.lots }
-    this.ordering = true;
+    //this.ordering = true;
     tradovate.Place(order);
+    this.oldposition = this.position
     this.position = ''
 }
 
-Robot.prototype.CloseAll = function () {
-    if (this.position > 0) {
-        tradovate.Place({ 'accountId': this.env.accountId, 'action': 2, 'symbol': this.symbol, 'orderQty': Math.abs(this.position) })
-    }
-    else if (this.position < 0) {
-        tradovate.Place({ 'accountId': this.env.accountId, 'action': 1, 'symbol': this.symbol, 'orderQty': Math.abs(this.position) })
-    }
+Robot.prototype.Close = function () {
+    this.closing = true
+    var action
+    if (this.position > 0) action = 2
+    else if (this.position < 0) action = 1
+    tradovate.Place({ 'accountId': this.env.accountId, 'action': action, 'symbol': this.symbol, 'orderQty': Math.abs(this.position) })
+    //tradovate.Place({ 'accountId': this.env.accountId, 'action': action, 'symbol': this.symbol, 'orderQty': this.lots })
     this.position = ''
+    this.oldposition = 0
     this.direction = ''
-    //console.log(control);
+}
+
+Robot.prototype.WriteDB = function (trade) {
+    //console.log(trade);
+    var dir = (trade.action == 'Buy') ? 1 : 2;
+    var postdata = [this.name, new Date().today(),
+        this.env.accountId, this.symbol,
+        trade.qty, dir,
+        trade.openPrice, trade.openTime, trade.closePrice, trade.closeTime];
+
+    //console.log(postdata);
+
+    request.post('https://connecting.hu/trading/tradovate/logger.php', { form: { data: postdata } }, function(err, res, body) {
+        if (err) { return console.log(err); }
+        //console.log(res);
+        if (body) { console.log('Szilankok.hu> ') ; console.log(body) }
+        //this.DeleteTrade(trade)
+    });
+}
+
+Robot.prototype.Delete = function (trade) {
+    delete this.trades[trade.id]
+    //this.trades[trade.id] = null
 }
 
 module.exports = Robot;

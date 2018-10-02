@@ -1,12 +1,12 @@
 [
     {
         "algo": "kisfroccs",
-        "name": "KisFroccs-11-6",
-        "symbol": "NQU8",
+        "name": "KisFroccs-NQ-11-6",
+        "symbol": "NQZ8",
         "lots": 1,
         "parameters": {
-            "besav": 2,
-            "kisav": 2
+            "besav": 11,
+            "kisav": 6
         },
         "subscriptions": {
             "quote": true,
@@ -17,8 +17,8 @@
         "active": true
     },    {
         "algo": "kisfroccs",
-        "name": "KisFroccs-16-9",
-        "symbol": "NQU8",
+        "name": "KisFroccs-NQ-16-9",
+        "symbol": "NQZ8",
         "lots": 1,
         "parameters": {
             "besav": 16,
@@ -34,12 +34,29 @@
     },
     {
         "algo": "kisfroccs",
-        "name": "KisFroccs-21-12",
-        "symbol": "NQU8",
+        "name": "KisFroccs-NQ-21-12",
+        "symbol": "NQZ8",
         "lots": 1,
         "parameters": {
             "besav": 21,
             "kisav": 12
+        },
+        "subscriptions": {
+            "quote": true,
+            "DOM": false,
+            "histogram": false,
+            "chart": false
+        },
+        "active": true
+    },
+    {
+        "algo": "kisfroccs",
+        "name": "KisFroccs-6E-18-10",
+        "symbol": "6EZ8",
+        "lots": 1,
+        "parameters": {
+            "besav": 18,
+            "kisav": 10
         },
         "subscriptions": {
             "quote": true,

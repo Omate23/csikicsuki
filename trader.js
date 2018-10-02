@@ -3,20 +3,24 @@
 var fs = require('fs');
 var tradovate = require('./tradovate1');
 var utils = require('./tradutils');
+var pricelogger = require('./TimeAndSalesLogger');
 
 var symbols = JSON.parse(fs.readFileSync('./data/symbol.json', 'utf8'));
 var settings = JSON.parse(fs.readFileSync('./data/settings.json', 'utf8'));
 
 var Robot = require('./Robot');
 var robots = []
-var robotsfile = JSON.parse(fs.readFileSync('./data/robots.json', 'utf8'));
+//var robotsfile = JSON.parse(fs.readFileSync('./data/robots.json', 'utf8'));
+var robotsfile = JSON.parse(fs.readFileSync('./data/robots.slow.json', 'utf8'));
+//var robotsfile = JSON.parse(fs.readFileSync('./data/robots.test.json', 'utf8'));
 robotsfile.forEach(function (r) {
     if (!r.active) return;
     robots.push(new Robot(r, settings));
 });
 //console.log(robots);
 
-
+var orderQueue = [];
+var lastToLog = [];
 
 
 tradovate.Events.on('connected', () => {
@@ -33,19 +37,27 @@ tradovate.Events.on('pricechange', function (data) {
     Offer = data.entries.Offer.price
     //console.log('b/o', Bid, Offer);
 
+    pricelogger.Log(data);  // for kalinas
+
     robots.forEach(function (r) {
         if (!r.position && !r.price)  { // initial position
-            r.price = Bid
-            // console.log('zeroprice: ' + r.price);
+            r.price = data.entries.Trade.price
             return
         }
 
         if (r.price)  {
-            var symbol = symbols[r.symbol]
+            var symbol = symbols[r.symbol.slice(0,-2)]
             var besav = r.parameters.besav
             var kisav = r.parameters.kisav
 
-            console.log(r.name, r.price, Math.round((Bid - r.price) / symbol.ticksize), 'pos:', r.position, 'dir:', r.direction);
+            var loga = [r.price, Math.round((Bid - r.price) / symbol.ticksize), 'pos:', r.position, 'dir:', r.direction]
+            var logid = loga.join()
+            if (lastToLog[r.name] != logid)  {
+                lastToLog[r.name] = logid
+                console.log(loga.join("\t"));
+                //console.log(lastToLog);
+            }
+
             if (r.price == '') return
 
             if (r.position === 0)   {
@@ -53,41 +65,51 @@ tradovate.Events.on('pricechange', function (data) {
                 else if ((Offer - r.price) /symbol.ticksize > besav) r.direction = 2
 
                 if (r.direction)  {
-                    console.log(r.env.accountId);
-
+                    orderQueue.push(r.id)
+                    console.log(orderQueue);
                     r.Open();
                 }
             }
             else if (r.position == 1)   {
                 if ((Bid - r.price) / symbol.ticksize > kisav)  {
-                    r.CloseAll();
+                    orderQueue.push(r.id)
+                    r.Close();
                 }
                 else if ((Bid - r.price) / symbol.ticksize < -besav)  {
+                    orderQueue.push(r.id)
+                    console.log(orderQueue);
                     r.Open();
                 }
             }
             else if (r.position == 2)   {
                 if ((Bid - r.price) / symbol.ticksize > kisav)  {
-                    r.CloseAll();
+                    orderQueue.push(r.id)
+                    r.Close();
                 }
                 else if ((Bid - r.price) / symbol.ticksize < -kisav)  {
-                    r.CloseAll();
+                    orderQueue.push(r.id)
+                    r.Close();
                 }
             }
             else if (r.position == -1)   {
                 if ((Offer - r.price) / symbol.ticksize < -kisav)  {
-                    r.CloseAll();
+                    orderQueue.push(r.id)
+                    r.Close();
                 }
                 else if ((Offer - r.price) / symbol.ticksize > besav)  {
+                    orderQueue.push(r.id)
+                    console.log(orderQueue);
                     r.Open();
                 }
             }
             else if (r.position == -2)   {
                 if ((Offer - r.price) / symbol.ticksize < -kisav)  {
-                    r.CloseAll();
+                    orderQueue.push(r.id)
+                    r.Close();
                 }
                 else if ((Offer - r.price) / symbol.ticksize > kisav)  {
-                    r.CloseAll();
+                    orderQueue.push(r.id)
+                    r.Close();
                 }
             }
         }
@@ -96,37 +118,57 @@ tradovate.Events.on('pricechange', function (data) {
 })
 
 tradovate.Events.on('order', function (data) {   // order received
-    // console.log(data);
-    for (r=0, len=robots.length; r<len; ++r) {
-        if (robots[r].ordering) {
-            robots[r].ordering = false
-            robots[r].Order(data.orderId)
-            break
-        }
+    console.log(data);
+    console.log(orderQueue);
+    var owner = orderQueue.shift();
+    if (owner > -1)    {
+        robots[owner].Order(data.orderId)
     }
+    else console.log('no owner for order');
+    console.log(orderQueue);
 })
 
 tradovate.Events.on('fill', function (data) {
     console.log(data);
+
+    // find closing trade
     for (var ri=0, rlen=robots.length; ri<rlen; ++ri) {
-        if (robots[ri].getTradeByOrderId(data.orderId))  {
+        if (robots[ri].getTradeByCloseOrderId(data.orderId))  {
             var r = robots[ri];
+            console.log('closing', r.name);
+            //console.log(r.trades);
+            r.CloseFill(data);
             break;
         }
     }
-    console.log(r);
-    if (!r) console.log(robots);
-    
+
+    // or find opening order
+    if (!r) {
+        for (var ri=0, rlen=robots.length; ri<rlen; ++ri) {
+            if (robots[ri].getTradeByOpenOrderId(data.orderId))  {
+                var r = robots[ri];
+                console.log('opening', r.name);
+                //console.log(r.trades);
+                r.OpenFill(data);
+                break;
+            }
+        }
+    }
+    if (!r) console.log('no robot found for fill');
+
+
 
     r.price = data.price
 
     if (r.direction)  {     // opening fill
         /*logq[logqOpened++].open(data);
         console.log(logq);*/
-        r.OpenFill(data);
+        //r.OpenFill(data);
     } else {                // closing fill
         while (data.qty--)   {
-            r.Filled(data);
+            //r.CloseFill(data);
+            //r.closing = false
+
             //logq[logqClosed++].close(data);
         }
         /*console.log(logq);
@@ -135,6 +177,7 @@ tradovate.Events.on('fill', function (data) {
     }
     //console.log(logq);
 
+    console.log(r.trades);
 
     /*if (contractId && contractId == data.contractId)    {
         contractId = 0;
@@ -146,15 +189,19 @@ tradovate.Events.on('fill', function (data) {
 })
 
 tradovate.Events.on('positionchange', function (data) {
+return
     console.log('posc');
-    console.log(data);
+    //console.log(data);
     for (var ri=0, rlen=robots.length; ri<rlen; ++ri) {
         if (robots[ri].getTradeByContractId(data.contractId))  {
             var r = robots[ri];
             break;
         }
     }
-    r.position = data.netPos
+    console.log(r.name);
+
+    r.position += parseInt(data.netPos - data.prevPos)
+
     if (data.netPos == 0)  {
         //console.log(data);
         //r.direction = ++r.direction % 2;    // alternating

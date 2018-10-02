@@ -33,7 +33,7 @@ request.post({
         body: JSON.stringify({ name: settings.login, password: settings.password })
     },
     function (error, response, body) {
-        //console.log(body)
+        if (debug && body) console.log(body)
         if (!error && response.statusCode == 200) {
             token = JSON.parse(body)
             authenticationAPI = true

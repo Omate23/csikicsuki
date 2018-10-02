@@ -1,34 +1,25 @@
 //var fs = require('fs');
 
+var tid = 0;
+
 class Trade {
-    constructor(robotId, orderId) {
+
+    constructor(robotId, orderId, symbol) {
+        this.id = tid++
         this.robotId = robotId
-        this.orderId = orderId
+        this.openOrderId = orderId
+        this.symbol = symbol
     }
 
     Open(trade) {
         for (var t in trade) { this[t] = trade[t] }
+        this.openPrice = trade.price;
         this.openTime = trade.timestamp.replace(/(\d{4}-\d\d-\d\d)T(\d\d:\d\d:\d\d)\..+/, '$1 $2');
     }
 
     Close(trade) {
+        this.closePrice = trade.price;
         this.closeTime = trade.timestamp.replace(/(\d{4}-\d\d-\d\d)T(\d\d:\d\d:\d\d)\..+/, '$1 $2');
-        this.WriteDB();
-    }
-
-    WriteDB() {
-        var dir = (this.action == 'Buy') ? 1 : 2;
-        var postdata = [this.logstring, new Date().today(),
-            this.accountId, this.symbol, this.orderQty, dir,
-            this.openPrice, this.openTime, this.closePrice, this.closeTime]
-
-        console.log(postdata);
-
-        /*request.post('https://connecting.hu/trading/tradovate/logger.php', { form: { data: postdata } }, function(err, res, body) {
-            if (err) { return console.log(err); }
-            //console.log(res);
-            if (body) { console.log('Szilankok.hu> ') ; console.log(body) }
-        });*/
     }
 }
 
