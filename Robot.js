@@ -6,8 +6,6 @@ var Trade = require('./Trade');
 var ids = 0;
 
 function Robot(r, settings) {
-    this.id = ids++;
-
     for (var i in r) { this[i] = r[i] }
     this.env = {}
     for (var i in settings) { this.env[i] = settings[i] }
@@ -15,6 +13,7 @@ function Robot(r, settings) {
     //var dir = './data/';
     //this.settings = JSON.parse(fs.readFileSync(dir + r.algo + '.json', 'utf8'));
 
+    this.id = ids++;
     this.position = 0;
     this.oldposition = 0;
     this.direction = '';
@@ -38,7 +37,7 @@ Robot.prototype.getTradeByOpenOrderId = function (oid) {
 
 Robot.prototype.getTradeByCloseOrderId = function (oid) {
     for (var ti=0, tlen=this.trades.length; ti<tlen; ++ti) {
-        console.log('getcloseorderID', oid, ti, this.trades[ti]);
+        //console.log('getcloseorderID', oid, ti, this.trades[ti]);
         if (this.trades[ti].closeOrderId == oid) return this.trades[ti]
     }
     return false
@@ -54,7 +53,7 @@ Robot.prototype.getTradeByCloseOrderId = function (oid) {
 Robot.prototype.Order = function(orderId) {
     if (this.opening)   {
         this.trades.push(new Trade(this.id, orderId, this.symbol))
-        console.log(this.name, 'opening order received', orderId);
+        //console.log(this.name, 'opening order received', orderId);
     }
     else if (this.closing)   {
         // find first non-closed
@@ -63,7 +62,7 @@ Robot.prototype.Order = function(orderId) {
             this.trades[ti].closeOrderId = orderId;
             break;
         }
-        console.log(this.name, 'closing order received');
+        //console.log(this.name, 'closing order received');
     }
 }
 
@@ -89,9 +88,14 @@ Robot.prototype.CloseFill = function(data) {
     this.trades = []
     //console.log(this.trades);
     this.position = 0;
+    if (this.stopping)  {
+        this.stopping = false
+        this.active = false
+    }
 }
 
 Robot.prototype.Open = function () {
+    if (!this.active || this.stopping) return
     this.opening = true
     //console.log(this);
     var order = { 'accountId': this.env.accountId, 'action': this.direction, 'symbol': this.symbol, 'orderQty': this.lots }

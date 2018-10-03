@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 var fs = require('fs');
+var request = require('request');
 var tradovate = require('./tradovate1');
 var utils = require('./tradutils');
 var pricelogger = require('./TimeAndSalesLogger');
@@ -10,6 +11,9 @@ var settings = JSON.parse(fs.readFileSync('./data/settings.json', 'utf8'));
 
 var Robot = require('./Robot');
 var robots = []
+var robotsfile = '';    // config object
+var robotsconfig = '';      // config in json
+/*
 //var robotsfile = JSON.parse(fs.readFileSync('./data/robots.json', 'utf8'));
 var robotsfile = JSON.parse(fs.readFileSync('./data/robots.slow.json', 'utf8'));
 //var robotsfile = JSON.parse(fs.readFileSync('./data/robots.test.json', 'utf8'));
@@ -18,17 +22,20 @@ robotsfile.forEach(function (r) {
     robots.push(new Robot(r, settings));
 });
 //console.log(robots);
+*/
 
 var orderQueue = [];
-var lastToLog = [];
+var lastToLog = [];     // console.log uses
+
+
+var configTimer = setInterval(() => {
+    RobotsConfig();
+    //console.log('timer')
+}, 2000)
 
 
 tradovate.Events.on('connected', () => {
-    robots.forEach(r => {
-        for (s in r.subscriptions)  {
-            if (r.subscriptions[s]) tradovate.Subscribe(s, r.symbol);
-        }
-    })
+    RobotsConfig();
 })
 
 tradovate.Events.on('pricechange', function (data) {
@@ -40,6 +47,7 @@ tradovate.Events.on('pricechange', function (data) {
     pricelogger.Log(data);  // for kalinas
 
     robots.forEach(function (r) {
+        if (!r.active || r.stopping) return
         if (!r.position && !r.price)  { // initial position
             r.price = data.entries.Trade.price
             return
@@ -54,6 +62,7 @@ tradovate.Events.on('pricechange', function (data) {
             var logid = loga.join()
             if (lastToLog[r.name] != logid)  {
                 lastToLog[r.name] = logid
+                loga.unshift(r.name)
                 console.log(loga.join("\t"));
                 //console.log(lastToLog);
             }
@@ -118,18 +127,19 @@ tradovate.Events.on('pricechange', function (data) {
 })
 
 tradovate.Events.on('order', function (data) {   // order received
-    console.log(data);
-    console.log(orderQueue);
+    //console.log(data);
+    //console.log(orderQueue);
+    if (!data.orderId) console.log(data);
     var owner = orderQueue.shift();
     if (owner > -1)    {
         robots[owner].Order(data.orderId)
     }
     else console.log('no owner for order');
-    console.log(orderQueue);
+    //console.log(orderQueue);
 })
 
 tradovate.Events.on('fill', function (data) {
-    console.log(data);
+    //console.log(data);
 
     // find closing trade
     for (var ri=0, rlen=robots.length; ri<rlen; ++ri) {
@@ -177,7 +187,7 @@ tradovate.Events.on('fill', function (data) {
     }
     //console.log(logq);
 
-    console.log(r.trades);
+    //console.log(r.trades);
 
     /*if (contractId && contractId == data.contractId)    {
         contractId = 0;
@@ -236,3 +246,54 @@ function Market()   {
     logq[logqOpened] = new LogQ(order, logstring);
 }
 */
+
+function RobotsConfig() {
+    request.get('https://connecting.hu/trading/tradovate/robots.php', function (error, response, body) {
+        var newconfig = body;
+        if (!robotsconfig)    {   // init robots
+            robotsconfig = newconfig
+            robotsfile = JSON.parse(robotsconfig);
+            console.log('initrobs');
+            robotsfile.forEach(function (r) {
+                //if (!r.active) return;
+                robots.push(new Robot(r, settings));
+            });
+            robots.forEach(r => {
+                for (s in r.subscriptions)  {
+                    if (r.subscriptions[s]) tradovate.Subscribe(s, r.symbol);
+                }
+            })
+
+        }
+        else if (robotsconfig != newconfig) {
+            robotsconfig = newconfig
+            robotsfile = JSON.parse(robotsconfig);
+            console.log('newrobs');
+
+            robotsfile.forEach(function (nr) {
+                robots.forEach(function (r) {
+                    if (nr.id == r.id)  {
+                        if (r.active && !nr.active) {   // stop robot
+                            console.log(r.name, 'stopping');
+                            if (!r.trades.length)   {
+                                console.log(r.name, 'stopped');
+                                r.active = false
+                            } else {
+                                r.stopping = true
+                                orderQueue.push(r.id)
+                                r.Close();
+                            }
+                        }
+                        if (!r.active && nr.active) {   // start robot
+                            console.log(r.name, 'started');
+                            r.price = ''
+                            r.active = true
+                        }
+                    }
+                });
+            });
+        }
+        //console.log(robots);
+        //process.exit()
+    });
+}
