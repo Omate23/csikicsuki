@@ -129,7 +129,6 @@ tradovate.Events.on('pricechange', function (data) {
 tradovate.Events.on('order', function (data) {   // order received
     //console.log(data);
     //console.log(orderQueue);
-    if (!data.orderId) console.log(data);
     var owner = orderQueue.shift();
     if (owner > -1)    {
         robots[owner].Order(data.orderId)

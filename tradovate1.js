@@ -226,7 +226,8 @@ function Got(got)   {
     var r = reqs[got[0].i]
     if (debug) console.log(r);
     if (r.url == 'order/placeorder')   {
-        TradovateEvents.emit('order', got[0].d)
+        if (!got[0].d.orderId) console.log(got[0].d);
+        else TradovateEvents.emit('order', got[0].d)
     }
     else if (r.url == 'user/syncrequest')   {
         synced = got[0].d
