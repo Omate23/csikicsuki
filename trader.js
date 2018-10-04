@@ -31,7 +31,7 @@ var lastToLog = [];     // console.log uses
 var configTimer = setInterval(() => {
     RobotsConfig();
     //console.log('timer')
-}, 2000)
+}, 3000)
 
 
 tradovate.Events.on('connected', () => {
@@ -63,6 +63,15 @@ tradovate.Events.on('pricechange', function (data) {
             if (lastToLog[r.name] != logid)  {
                 lastToLog[r.name] = logid
                 loga.unshift(r.name)
+
+                if (r.direction == 1)   {
+                    var positionValue = (Bid - r.price)
+                }
+                else if (r.direction == 2)   {
+                    var positionValue = (Offer - r.price)
+                }
+
+                loga.push(positionValue+'$');
                 console.log(loga.join("\t"));
                 //console.log(lastToLog);
             }
@@ -288,6 +297,7 @@ function RobotsConfig() {
                             r.price = ''
                             r.active = true
                         }
+                        r.parameters = nr.parameters
                     }
                 });
             });
