@@ -96,9 +96,12 @@ Robot.prototype.CloseFill = function(data) {
 
 Robot.prototype.Open = function () {
     //console.log(this);
-    if (!this.active || this.stopping) return
-    if (this.parameters.mode == 1 && this.direction != 1) return  // long only
-    if (this.parameters.mode == 2 && this.direction != 2) return  // short only
+    if (!this.active || this.stopping) return false
+    if (this.parameters.mode == 1 && this.direction != 1  // long only
+        || this.parameters.mode == 2 && this.direction != 2)  {
+            this.direction = ''
+            return false
+        } // short only
     this.opening = true
     //console.log(this);
     var order = { 'accountId': this.env.accountId, 'action': this.direction, 'symbol': this.symbol, 'orderQty': this.lots }
@@ -106,6 +109,7 @@ Robot.prototype.Open = function () {
     tradovate.Place(order);
     this.oldposition = this.position
     this.position = ''
+    return true
 }
 
 Robot.prototype.Close = function () {

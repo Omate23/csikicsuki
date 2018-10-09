@@ -65,13 +65,13 @@ tradovate.Events.on('pricechange', function (data) {
                 loga.unshift(r.name)
 
                 if (r.direction == 1)   {
-                    var positionValue = (Bid - r.price)
+                    var positionValue = (Bid - r.price) / symbol.ticksize * symbol.tickvalue * r.position
                 }
                 else if (r.direction == 2)   {
-                    var positionValue = (Offer - r.price)
+                    var positionValue = (Offer - r.price) / symbol.ticksize * symbol.tickvalue * r.position
                 }
+                if (positionValue) loga.push(positionValue+'$');
 
-                loga.push(positionValue+'$');
                 console.log(loga.join("\t"));
                 //console.log(lastToLog);
             }
@@ -84,8 +84,8 @@ tradovate.Events.on('pricechange', function (data) {
 
                 if (r.direction)  {
                     orderQueue.push(r.id)
+                    if (!r.Open()) { orderQueue.pop(); r.price = Bid; }
                     console.log(orderQueue);
-                    r.Open();
                 }
             }
             else if (r.position == 1)   {
@@ -95,8 +95,8 @@ tradovate.Events.on('pricechange', function (data) {
                 }
                 else if ((Bid - r.price) / symbol.ticksize < -besav)  {
                     orderQueue.push(r.id)
+                    if (!r.Open()) { orderQueue.pop(); r.price = Bid; }
                     console.log(orderQueue);
-                    r.Open();
                 }
             }
             else if (r.position == 2)   {
@@ -116,8 +116,8 @@ tradovate.Events.on('pricechange', function (data) {
                 }
                 else if ((Offer - r.price) / symbol.ticksize > besav)  {
                     orderQueue.push(r.id)
+                    if (!r.Open()) { orderQueue.pop(); r.price = Bid; }
                     console.log(orderQueue);
-                    r.Open();
                 }
             }
             else if (r.position == -2)   {
@@ -173,7 +173,6 @@ tradovate.Events.on('fill', function (data) {
         }
     }
     if (!r) console.log('no robot found for fill');
-
 
 
     r.price = data.price
