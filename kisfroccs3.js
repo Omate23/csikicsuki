@@ -46,6 +46,9 @@ tradovate.Events.on('pricechange', function (data) {
 
     pricelogger.Log(data);  // for kalinas
 
+    var logsep = false
+    var floating = 0
+
     robots.forEach(function (r) {
         if (!r.active || r.stopping) return
         if (!r.position && !r.price)  { // initial position
@@ -61,6 +64,7 @@ tradovate.Events.on('pricechange', function (data) {
             var loga = [r.price, Math.round((Bid - r.price) / symbol.ticksize), 'pos:', r.position, 'dir:', r.direction]
             var logid = loga.join()
             if (lastToLog[r.name] != logid)  {
+                if (!logsep) { console.log('--- Floating: '); logsep = true; }
                 lastToLog[r.name] = logid
                 loga.unshift(r.name)
 
@@ -71,8 +75,12 @@ tradovate.Events.on('pricechange', function (data) {
                     var positionValue = (Offer - r.price) / symbol.ticksize * symbol.tickvalue * r.position
                 }
                 if (positionValue) loga.push(positionValue+'$');
+                else if (positionValue == 0) loga.push('0$');
+                floating += positionValue;
 
                 console.log(loga.join("\t"));
+                if (floating) console.log('Floating ' + floating) + '$';
+
                 //console.log(lastToLog);
             }
 
@@ -88,7 +96,7 @@ tradovate.Events.on('pricechange', function (data) {
                     console.log(orderQueue);
                 }
             }
-            else if (r.position == 1)   {
+            else if (r.position >  0 && r.position < 3)   {
                 if ((Bid - r.price) / symbol.ticksize > kisav)  {
                     orderQueue.push(r.id)
                     r.Close();
@@ -99,7 +107,7 @@ tradovate.Events.on('pricechange', function (data) {
                     console.log(orderQueue);
                 }
             }
-            else if (r.position == 2)   {
+            else if (r.position == 3)   {
                 if ((Bid - r.price) / symbol.ticksize > kisav)  {
                     orderQueue.push(r.id)
                     r.Close();
@@ -120,7 +128,18 @@ tradovate.Events.on('pricechange', function (data) {
                     console.log(orderQueue);
                 }
             }
-            else if (r.position == -2)   {
+            else if (r.position < 0 && r.position > -3)   {
+                if ((Offer - r.price) / symbol.ticksize < -kisav)  {
+                    orderQueue.push(r.id)
+                    r.Close();
+                }
+                else if ((Offer - r.price) / symbol.ticksize > besav)  {
+                    orderQueue.push(r.id)
+                    if (!r.Open()) { orderQueue.pop(); r.price = Bid; }
+                    console.log(orderQueue);
+                }
+            }
+            else if (r.position == -3)   {
                 if ((Offer - r.price) / symbol.ticksize < -kisav)  {
                     orderQueue.push(r.id)
                     r.Close();
@@ -263,6 +282,8 @@ function RobotsConfig() {
             console.log('initrobs');
             robotsfile.forEach(function (r) {
                 //if (!r.active) return;
+                r.name.replace(/roccs/, 'roccs3');
+                r.algo.replace(/roccs/, 'roccs3');
                 robots.push(new Robot(r, settings));
             });
             robots.forEach(r => {
