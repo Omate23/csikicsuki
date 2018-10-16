@@ -47,6 +47,7 @@ tradovate.Events.on('pricechange', function (data) {
     pricelogger.Log(data);  // for kalinas
 
     var logsep = false
+    var floating = 0
 
     robots.forEach(function (r) {
         if (!r.active || r.stopping) return
@@ -60,10 +61,10 @@ tradovate.Events.on('pricechange', function (data) {
             var besav = r.parameters.besav
             var kisav = r.parameters.kisav
 
-            var loga = [r.price, Math.round((Bid - r.price) / symbol.ticksize), 'pos:', r.position, 'dir:', r.direction]
+            var loga = [r.price, Math.round((Bid - r.price) / symbol.ticksize), 'pos:', r.position]
             var logid = loga.join()
             if (lastToLog[r.name] != logid)  {
-                if (!logsep) { console.log('---'); logsep = true; }
+                if (!logsep && floating != 0) { logsep = true; console.log('--- Floating: ' + floating + '$'); }
                 lastToLog[r.name] = logid
                 loga.unshift(r.name)
 
@@ -73,7 +74,11 @@ tradovate.Events.on('pricechange', function (data) {
                 else if (r.direction == 2)   {
                     var positionValue = (Offer - r.price) / symbol.ticksize * symbol.tickvalue * r.position
                 }
-                if (positionValue) loga.push(positionValue+'$');
+                if (positionValue)  {
+                    //if (positionValue == 0) loga.push('0$');
+                    loga.push(positionValue+'$');
+                    floating += positionValue;
+                }
                 else if (positionValue == 0) loga.push('0$');
 
                 console.log(loga.join("\t"));
@@ -264,7 +269,7 @@ function RobotsConfig() {
         if (!robotsconfig)    {   // init robots
             robotsconfig = newconfig
             robotsfile = JSON.parse(robotsconfig);
-            console.log('initrobs');
+            console.log('Initialize robots');
             robotsfile.forEach(function (r) {
                 //if (!r.active) return;
                 robots.push(new Robot(r, settings));
@@ -274,12 +279,11 @@ function RobotsConfig() {
                     if (r.subscriptions[s]) tradovate.Subscribe(s, r.symbol);
                 }
             })
-
         }
         else if (robotsconfig != newconfig) {
             robotsconfig = newconfig
             robotsfile = JSON.parse(robotsconfig);
-            console.log('newrobs');
+            console.log('Reload robots');
 
             robotsfile.forEach(function (nr) {
                 robots.forEach(function (r) {

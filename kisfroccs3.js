@@ -61,10 +61,10 @@ tradovate.Events.on('pricechange', function (data) {
             var besav = r.parameters.besav
             var kisav = r.parameters.kisav
 
-            var loga = [r.price, Math.round((Bid - r.price) / symbol.ticksize), 'pos:', r.position, 'dir:', r.direction]
+            var loga = [r.price, Math.round((Bid - r.price) / symbol.ticksize), 'pos:', r.position]
             var logid = loga.join()
             if (lastToLog[r.name] != logid)  {
-                if (!logsep) { console.log('--- Floating: '); logsep = true; }
+                if (!logsep && floating != 0) { logsep = true; console.log('--- Floating: ' + floating + '$'); }
                 lastToLog[r.name] = logid
                 loga.unshift(r.name)
 
@@ -74,13 +74,14 @@ tradovate.Events.on('pricechange', function (data) {
                 else if (r.direction == 2)   {
                     var positionValue = (Offer - r.price) / symbol.ticksize * symbol.tickvalue * r.position
                 }
-                if (positionValue) loga.push(positionValue+'$');
+                if (positionValue)  {
+                    //if (positionValue == 0) loga.push('0$');
+                    loga.push(positionValue+'$'); if (positionValue == 0)
+                    floating += positionValue;
+                }
                 else if (positionValue == 0) loga.push('0$');
-                floating += positionValue;
 
                 console.log(loga.join("\t"));
-                if (floating) console.log('Floating ' + floating) + '$';
-
                 //console.log(lastToLog);
             }
 
@@ -108,24 +109,13 @@ tradovate.Events.on('pricechange', function (data) {
                 }
             }
             else if (r.position == 3)   {
-                if ((Bid - r.price) / symbol.ticksize > kisav)  {
+                if ((Bid - r.price) / symbol.ticksize > besav)  {
                     orderQueue.push(r.id)
                     r.Close();
                 }
                 else if ((Bid - r.price) / symbol.ticksize < -kisav)  {
                     orderQueue.push(r.id)
                     r.Close();
-                }
-            }
-            else if (r.position == -1)   {
-                if ((Offer - r.price) / symbol.ticksize < -kisav)  {
-                    orderQueue.push(r.id)
-                    r.Close();
-                }
-                else if ((Offer - r.price) / symbol.ticksize > besav)  {
-                    orderQueue.push(r.id)
-                    if (!r.Open()) { orderQueue.pop(); r.price = Bid; }
-                    console.log(orderQueue);
                 }
             }
             else if (r.position < 0 && r.position > -3)   {
@@ -140,7 +130,7 @@ tradovate.Events.on('pricechange', function (data) {
                 }
             }
             else if (r.position == -3)   {
-                if ((Offer - r.price) / symbol.ticksize < -kisav)  {
+                if ((Offer - r.price) / symbol.ticksize < -besav)  {
                     orderQueue.push(r.id)
                     r.Close();
                 }
@@ -279,11 +269,11 @@ function RobotsConfig() {
         if (!robotsconfig)    {   // init robots
             robotsconfig = newconfig
             robotsfile = JSON.parse(robotsconfig);
-            console.log('initrobs');
+            console.log('Initialize robots');
             robotsfile.forEach(function (r) {
                 //if (!r.active) return;
-                r.name.replace(/roccs/, 'roccs3');
-                r.algo.replace(/roccs/, 'roccs3');
+                r.name = r.name.replace(/roccs/, 'roccs3');
+                r.algo = r.algo.replace(/roccs/, 'roccs3');
                 robots.push(new Robot(r, settings));
             });
             robots.forEach(r => {
@@ -291,12 +281,11 @@ function RobotsConfig() {
                     if (r.subscriptions[s]) tradovate.Subscribe(s, r.symbol);
                 }
             })
-
         }
         else if (robotsconfig != newconfig) {
             robotsconfig = newconfig
             robotsfile = JSON.parse(robotsconfig);
-            console.log('newrobs');
+            console.log('Reload robots');
 
             robotsfile.forEach(function (nr) {
                 robots.forEach(function (r) {
