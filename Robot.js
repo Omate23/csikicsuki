@@ -3,7 +3,7 @@ var request = require('request');
 var tradovate = require('./tradovate1');
 var Trade = require('./Trade');
 
-var ids = 0;
+//var ids = 0;
 
 function Robot(r, settings) {
     for (var i in r) { this[i] = r[i] }
@@ -13,7 +13,7 @@ function Robot(r, settings) {
     //var dir = './data/';
     //this.settings = JSON.parse(fs.readFileSync(dir + r.algo + '.json', 'utf8'));
 
-    this.id = ids++;
+//    this.id = ids++;
     this.position = 0;
     this.oldposition = 0;
     this.direction = '';

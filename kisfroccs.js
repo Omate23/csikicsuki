@@ -46,8 +46,8 @@ tradovate.Events.on('pricechange', function (data) {
 
     pricelogger.Log(data);  // for kalinas
 
-    var logsep = false
-    var floating = 0
+    //var logsep = false
+    var floating;
 
     robots.forEach(function (r) {
         if (!r.active || r.stopping) return
@@ -56,15 +56,16 @@ tradovate.Events.on('pricechange', function (data) {
             return
         }
 
+        floating = 0;
+
         if (r.price)  {
             var symbol = symbols[r.symbol.slice(0,-2)]
-            var besav = r.parameters.besav
-            var kisav = r.parameters.kisav
+            var besav = r.parameters.besav*2
+            var kisav = r.parameters.kisav*2
 
             var loga = [r.price, Math.round((Bid - r.price) / symbol.ticksize), 'pos:', r.position]
             var logid = loga.join()
             if (lastToLog[r.name] != logid)  {
-                if (!logsep && floating != 0) { logsep = true; console.log('--- Floating: ' + floating + '$'); }
                 lastToLog[r.name] = logid
                 loga.unshift(r.name)
 
@@ -142,6 +143,7 @@ tradovate.Events.on('pricechange', function (data) {
         }
         //console.log('dir: ' + r.direction);
     })
+    if (floating != 0) { console.log('--- Floating: ' + floating + '$'); }
 })
 
 tradovate.Events.on('order', function (data) {   // order received
