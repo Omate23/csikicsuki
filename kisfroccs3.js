@@ -46,7 +46,8 @@ tradovate.Events.on('pricechange', function (data) {
 
     pricelogger.Log(data);  // for kalinas
 
-    var floating;
+    var logsep = false;
+    var floating = 0;
 
     robots.forEach(function (r) {
         if (!r.active || r.stopping) return
@@ -54,8 +55,6 @@ tradovate.Events.on('pricechange', function (data) {
             r.price = data.entries.Trade.price
             return
         }
-
-        floating = 0
 
         if (r.price)  {
             var symbol = symbols[r.symbol.slice(0,-2)]
@@ -75,9 +74,9 @@ tradovate.Events.on('pricechange', function (data) {
                     var positionValue = (Offer - r.price) / symbol.ticksize * symbol.tickvalue * r.position
                 }
                 if (positionValue)  {
-                    //if (positionValue == 0) loga.push('0$');
-                    loga.push(positionValue+'$'); if (positionValue == 0)
+                    loga.push(positionValue+'$');
                     floating += positionValue;
+                    logsep = true
                 }
                 else if (positionValue == 0) loga.push('0$');
 
@@ -142,7 +141,8 @@ tradovate.Events.on('pricechange', function (data) {
         }
         //console.log('dir: ' + r.direction);
     })
-    if (floating != 0) { console.log('--- Floating: ' + floating + '$'); }
+    if (logsep) { logsep = false; console.log('--- Floating: ' + floating + '$'); }
+    //if (floating != 0) { console.log('--- Floating: ' + floating + '$'); }
 })
 
 tradovate.Events.on('order', function (data) {   // order received
@@ -182,8 +182,8 @@ tradovate.Events.on('fill', function (data) {
             }
         }
     }
-    if (!r) console.log('no robot found for fill');
-
+    //if (!r) console.log('no robot found for fill');
+    if (!r) { console.log('no robot found for fill'); return }
 
     r.price = data.price
 
@@ -290,7 +290,7 @@ function RobotsConfig() {
 
             robotsfile.forEach(function (nr) {
                 robots.forEach(function (r) {
-                    if (nr.id == r.id)  {
+                    if (nr.dbid == r.dbid)  {
                         if (r.active && !nr.active) {   // stop robot
                             console.log(r.name, 'stopping');
                             if (!r.trades.length)   {
@@ -312,7 +312,7 @@ function RobotsConfig() {
                 });
             });
         }
-        console.log(robots);
+        //console.log(robots);
         //process.exit()
     });
 }

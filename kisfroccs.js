@@ -46,8 +46,8 @@ tradovate.Events.on('pricechange', function (data) {
 
     pricelogger.Log(data);  // for kalinas
 
-    //var logsep = false
-    var floating;
+    var logsep = false
+    var floating = 0;
 
     robots.forEach(function (r) {
         if (!r.active || r.stopping) return
@@ -56,12 +56,10 @@ tradovate.Events.on('pricechange', function (data) {
             return
         }
 
-        floating = 0;
-
         if (r.price)  {
             var symbol = symbols[r.symbol.slice(0,-2)]
-            var besav = r.parameters.besav*2
-            var kisav = r.parameters.kisav*2
+            var besav = r.parameters.besav
+            var kisav = r.parameters.kisav
 
             var loga = [r.price, Math.round((Bid - r.price) / symbol.ticksize), 'pos:', r.position]
             var logid = loga.join()
@@ -76,9 +74,9 @@ tradovate.Events.on('pricechange', function (data) {
                     var positionValue = (Offer - r.price) / symbol.ticksize * symbol.tickvalue * r.position
                 }
                 if (positionValue)  {
-                    //if (positionValue == 0) loga.push('0$');
                     loga.push(positionValue+'$');
                     floating += positionValue;
+                    logsep = true
                 }
                 else if (positionValue == 0) loga.push('0$');
 
@@ -143,7 +141,8 @@ tradovate.Events.on('pricechange', function (data) {
         }
         //console.log('dir: ' + r.direction);
     })
-    if (floating != 0) { console.log('--- Floating: ' + floating + '$'); }
+    if (logsep) { logsep = false; console.log('--- Floating: ' + floating + '$'); }
+    //if (floating != 0) { console.log('--- Floating: ' + floating + '$'); }
 })
 
 tradovate.Events.on('order', function (data) {   // order received
@@ -160,8 +159,11 @@ tradovate.Events.on('order', function (data) {   // order received
 tradovate.Events.on('fill', function (data) {
     //console.log(data);
 
+    console.log(data);
+
     // find closing trade
     for (var ri=0, rlen=robots.length; ri<rlen; ++ri) {
+        console.log(robots[ri].trades);
         if (robots[ri].getTradeByCloseOrderId(data.orderId))  {
             var r = robots[ri];
             console.log('closing', r.name);
@@ -183,8 +185,8 @@ tradovate.Events.on('fill', function (data) {
             }
         }
     }
-    if (!r) console.log('no robot found for fill');
-
+    //if (!r) console.log('no robot found for fill');
+    if (!r) { console.log('no robot found for fill'); return }
 
     r.price = data.price
 
@@ -289,13 +291,13 @@ function RobotsConfig() {
 
             robotsfile.forEach(function (nr) {
                 robots.forEach(function (r) {
-                    if (nr.id == r.id)  {
+                    if (nr.dbid == r.dbid)  {
                         if (r.active && !nr.active) {   // stop robot
-                            console.log(r.name, 'stopping');
                             if (!r.trades.length)   {
                                 console.log(r.name, 'stopped');
                                 r.active = false
                             } else {
+                                console.log(r.name, 'stopping...');
                                 r.stopping = true
                                 orderQueue.push(r.id)
                                 r.Close();

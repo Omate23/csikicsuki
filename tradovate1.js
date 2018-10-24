@@ -209,12 +209,16 @@ function GotEvent(got)   {
     //console.log(got[0].d)
     if (debug) console.log(got[0].d);
     got.forEach(function (e,k) {
-        if (e.d.entityType == 'position' && e.d.eventType == 'Updated')   {
+        if (e.d.entityType == 'fill' && e.d.eventType == 'Created')   {
+            TradovateEvents.emit('fill', e.d.entity)
+        }
+        else if (e.d.entityType == 'position' && e.d.eventType == 'Updated')   {
             //console.log('=' + e.d.entity.netPos);
             TradovateEvents.emit('positionchange', e.d.entity)
         }
-        else if (e.d.entityType == 'fill' && e.d.eventType == 'Created')   {
-            TradovateEvents.emit('fill', e.d.entity)
+        else if (e.d.entityType == 'command' && e.d.eventType == 'Created' && e.d.entity.commandStatus == 'RiskRejected')   {
+            console.log('RiskRejected');
+            TradovateEvents.emit('riskrejected', e.d.entity)
         }
     })
 }
