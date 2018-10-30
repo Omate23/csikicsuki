@@ -27,6 +27,8 @@ robotsfile.forEach(function (r) {
 var orderQueue = [];
 var lastToLog = [];     // console.log uses
 
+var TP = 1500, SL = 1000;
+
 
 var configTimer = setInterval(() => {
     RobotsConfig();
@@ -48,6 +50,7 @@ tradovate.Events.on('pricechange', function (data) {
 
     var logsep = false;
     var floating = 0;
+    var realized = 0;
 
     robots.forEach(function (r) {
         if (!r.active || r.stopping) return
@@ -93,7 +96,7 @@ tradovate.Events.on('pricechange', function (data) {
                 if (r.direction)  {
                     orderQueue.push(r.id)
                     if (!r.Open()) { orderQueue.pop(); r.price = Bid; }
-                    console.log(orderQueue);
+                    //console.log(orderQueue);
                 }
             }
             else if (r.position >  0 && r.position < 3)   {
@@ -104,7 +107,6 @@ tradovate.Events.on('pricechange', function (data) {
                 else if ((Bid - r.price) / symbol.ticksize < -besav)  {
                     orderQueue.push(r.id)
                     if (!r.Open()) { orderQueue.pop(); r.price = Bid; }
-                    console.log(orderQueue);
                 }
             }
             else if (r.position == 3)   {
@@ -138,10 +140,20 @@ tradovate.Events.on('pricechange', function (data) {
                     r.Close();
                 }
             }
+
+            realized += r.realized
+            if (realized > TP) {
+                console.log('Profits taken. Exit.');
+                process.exit();
+            }
+            else if (realized < -SL) {
+                console.log('Losses taken. Exit.');
+                process.exit();
+            }
         }
         //console.log('dir: ' + r.direction);
     })
-    if (logsep) { logsep = false; console.log('--- Floating: ' + floating + '$'); }
+    if (logsep) { logsep = false; console.log('\n--- Floating: ' + floating + '$' + '\t-- Realized: ' + realized + '$'); }
     //if (floating != 0) { console.log('--- Floating: ' + floating + '$'); }
 })
 
@@ -315,4 +327,11 @@ function RobotsConfig() {
         //console.log(robots);
         //process.exit()
     });
+}
+
+function CloseAll() {
+    robots.forEach(function (r) {
+        orderQueue.push(r.id)
+        r.Close();
+    })
 }

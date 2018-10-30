@@ -1,7 +1,8 @@
-//var fs = require('fs');
+var fs = require('fs');
 var request = require('request');
 var tradovate = require('./tradovate1');
 var Trade = require('./Trade');
+var symbols = JSON.parse(fs.readFileSync('./data/symbol.json', 'utf8'));
 
 var ids = 0;
 
@@ -18,6 +19,7 @@ function Robot(r, settings) {
     this.oldposition = 0;
     this.direction = '';
     this.price = '';
+    this.realized = 0;
 
     // when orderid received, we use these to decide original intention
     this.opening = false;  // closing order sent
@@ -83,12 +85,13 @@ Robot.prototype.CloseFill = function(data) {
     var trade = this.getTradeByCloseOrderId(data.orderId);
     if (!trade) return false
     this.closing = false
+    //console.log(this.trades);
     this.trades.forEach(trade => {  // close all
         trade.Close(data)
+        this.CalcProfit(trade);
         this.WriteDB(trade);
     });
     this.trades = []
-    //console.log(this.trades);
     this.position = 0;
     if (this.stopping)  {
         this.stopping = false
@@ -124,6 +127,16 @@ Robot.prototype.Close = function () {
     this.position = ''
     this.oldposition = 0
     this.direction = ''
+}
+
+Robot.prototype.CalcProfit = function (trade) {
+    //console.log(trade);
+    var symbol = symbols[trade.symbol.slice(0,-2)]
+    var dir = (trade.action == 'Buy') ? -1 : 1;
+    var profit = (trade.openPrice - trade.closePrice) / symbol.ticksize * symbol.tickvalue * dir;
+    this.realized += profit;
+    //console.log(profit + '$ P');
+    //console.log(this.realized + '$ R');
 }
 
 Robot.prototype.WriteDB = function (trade) {

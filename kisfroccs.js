@@ -27,7 +27,6 @@ robotsfile.forEach(function (r) {
 var orderQueue = [];
 var lastToLog = [];     // console.log uses
 
-
 var configTimer = setInterval(() => {
     RobotsConfig();
     //console.log('timer')
@@ -48,6 +47,7 @@ tradovate.Events.on('pricechange', function (data) {
 
     var logsep = false
     var floating = 0;
+    var realized = 0;
 
     robots.forEach(function (r) {
         if (!r.active || r.stopping) return
@@ -141,7 +141,7 @@ tradovate.Events.on('pricechange', function (data) {
         }
         //console.log('dir: ' + r.direction);
     })
-    if (logsep) { logsep = false; console.log('--- Floating: ' + floating + '$'); }
+    if (logsep) { logsep = false; console.log('\n--- Floating: ' + floating + '$' + '\t-- Realized: ' + realized + '$'); }
     //if (floating != 0) { console.log('--- Floating: ' + floating + '$'); }
 })
 
