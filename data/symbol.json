@@ -1,5 +1,5 @@
 {
     "ES" : { "ticksize": 0.25, "tickvalue": 12.5 },
-    "NQ" : { "ticksize": 0.25, "tickvalue": 5 },
+    "NQ" : { "ticksize": 0.25, "tickvalue": 5, "commission": 4.44 },
     "6E" : { "ticksize": 0.00005, "tickvalue": 6.25 }
 }

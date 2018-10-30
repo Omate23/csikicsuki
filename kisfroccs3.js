@@ -27,7 +27,8 @@ robotsfile.forEach(function (r) {
 var orderQueue = [];
 var lastToLog = [];     // console.log uses
 
-var TP = 1500, SL = 1000;
+var floating = 0, netProfit = 0, realized = 0, lotsUsed = 0;
+var TP = 100, SL = 100;
 
 
 var configTimer = setInterval(() => {
@@ -49,8 +50,7 @@ tradovate.Events.on('pricechange', function (data) {
     pricelogger.Log(data);  // for kalinas
 
     var logsep = false;
-    var floating = 0;
-    var realized = 0;
+    floating = 0; netProfit = 0; realized = 0; lotsUsed = 0;
 
     robots.forEach(function (r) {
         if (!r.active || r.stopping) return
@@ -142,18 +142,21 @@ tradovate.Events.on('pricechange', function (data) {
             }
 
             realized += r.realized
-            if (realized > TP) {
+            lotsUsed += r.lotsUsed
+            //netProfit += Math.round((r.realized - r.lotsUsed * symbol.commission) * 100) / 100;
+            netProfit += parseFloat(r.realized - r.lotsUsed * symbol.commission).toFixed(2)
+            if (netProfit > TP) {
+                CloseAll()
                 console.log('Profits taken. Exit.');
-                process.exit();
             }
-            else if (realized < -SL) {
+            else if (netProfit < -SL) {
+                CloseAll()
                 console.log('Losses taken. Exit.');
-                process.exit();
             }
         }
         //console.log('dir: ' + r.direction);
     })
-    if (logsep) { logsep = false; console.log('\n--- Floating: ' + floating + '$' + '\t-- Realized: ' + realized + '$'); }
+    if (logsep) { logsep = false; LogSum(); }
     //if (floating != 0) { console.log('--- Floating: ' + floating + '$'); }
 })
 
@@ -175,7 +178,7 @@ tradovate.Events.on('fill', function (data) {
     for (var ri=0, rlen=robots.length; ri<rlen; ++ri) {
         if (robots[ri].getTradeByCloseOrderId(data.orderId))  {
             var r = robots[ri];
-            console.log('closing', r.name);
+            console.log('close filled', r.name);
             //console.log(r.trades);
             r.CloseFill(data);
             break;
@@ -187,7 +190,7 @@ tradovate.Events.on('fill', function (data) {
         for (var ri=0, rlen=robots.length; ri<rlen; ++ri) {
             if (robots[ri].getTradeByOpenOrderId(data.orderId))  {
                 var r = robots[ri];
-                console.log('opening', r.name);
+                console.log('open filled', r.name);
                 //console.log(r.trades);
                 r.OpenFill(data);
                 break;
@@ -331,7 +334,47 @@ function RobotsConfig() {
 
 function CloseAll() {
     robots.forEach(function (r) {
-        orderQueue.push(r.id)
-        r.Close();
+        if (!r.active || r.stopping) return
+        r.stopping = true
+        if (r.trades.length)    {
+            orderQueue.push(r.id)
+            r.Close();
+        }
     })
+
+    var cycles = 0
+    var ci = setInterval(() => {
+        var cnt = 0;
+
+        robots.forEach(function (r) {
+            //console.log(r.trades.length);
+            cnt += r.trades.length
+        })
+        console.log('Still to close: ' + cnt);
+
+        if (cnt == 0)   {
+            floating = 0
+            robots.forEach((r) => {
+                realized += r.realized
+                lotsUsed += r.lotsUsed
+                var symbol = symbols[r.symbol.slice(0,-2)]
+                //netProfit += Math.round((r.realized - r.lotsUsed * symbol.commission) * 100) / 100;
+                netProfit += parseFloat(r.realized - r.lotsUsed * symbol.commission).toFixed(2)
+            })
+            LogSum();
+            process.exit()
+        }
+        else if (cycles++ > 4)    {     // if a new trade was opened during CloseAll
+            clearInterval(ci)
+            robots.forEach((r) => {
+                if (r.trades.length) r.stopping = false     // let CloseAll work again
+            })
+            console.log('CloseAll again...');
+            CloseAll()
+        }
+    }, 100);
+}
+
+function LogSum()   {
+    console.log('\n--- Floating: ' + floating + '$' + '\t-- Realized: ' + realized + '$' + '\t-- Net: ' + netProfit + '$' + '\t-- RT Lots: ' + lotsUsed);
 }

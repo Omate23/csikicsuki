@@ -20,6 +20,7 @@ function Robot(r, settings) {
     this.direction = '';
     this.price = '';
     this.realized = 0;
+    this.lotsUsed = 0;
 
     // when orderid received, we use these to decide original intention
     this.opening = false;  // closing order sent
@@ -122,6 +123,7 @@ Robot.prototype.Close = function () {
     var action
     if (this.position > 0) action = 2
     else if (this.position < 0) action = 1
+    else return
     tradovate.Place({ 'accountId': this.env.accountId, 'action': action, 'symbol': this.symbol, 'orderQty': Math.abs(this.position) })
     //tradovate.Place({ 'accountId': this.env.accountId, 'action': action, 'symbol': this.symbol, 'orderQty': this.lots })
     this.position = ''
@@ -135,6 +137,7 @@ Robot.prototype.CalcProfit = function (trade) {
     var dir = (trade.action == 'Buy') ? -1 : 1;
     var profit = (trade.openPrice - trade.closePrice) / symbol.ticksize * symbol.tickvalue * dir;
     this.realized += profit;
+    this.lotsUsed++;
     //console.log(profit + '$ P');
     //console.log(this.realized + '$ R');
 }
