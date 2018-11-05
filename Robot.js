@@ -19,6 +19,7 @@ function Robot(r, settings) {
     this.oldposition = 0;
     this.direction = '';
     this.price = '';
+    this.averagePrice = 0;
     this.realized = 0;
     this.lotsUsed = 0;
 
@@ -76,6 +77,13 @@ Robot.prototype.OpenFill = function(data) {
     if (!trade) return false
     this.opening = false
     trade.Open(data)
+
+    var avgp = 0;
+    this.trades.forEach(trade => {  // calc avg price
+        avgp += trade.openPrice
+    });
+    this.averagePrice = avgp / this.trades.length
+
     //console.log('dir ', this.direction);
     this.position = (this.oldposition || 0) + ((this.direction == 1) ? 1 : -1);
     //console.log('pos ', this.position);

@@ -28,7 +28,7 @@ var orderQueue = [];
 var lastToLog = [];     // console.log uses
 
 var floating = 0, netProfit = 0, realized = 0, lotsUsed = 0;
-var TP = 100, SL = 100;
+var TP = 1500, SL = 850;
 
 
 var configTimer = setInterval(() => {
@@ -71,13 +71,14 @@ tradovate.Events.on('pricechange', function (data) {
                 loga.unshift(r.name)
 
                 if (r.direction == 1)   {
-                    var positionValue = (Bid - r.price) / symbol.ticksize * symbol.tickvalue * r.position
+                    var positionValue = (Bid - r.averagePrice) / symbol.ticksize * symbol.tickvalue * r.position
                 }
                 else if (r.direction == 2)   {
-                    var positionValue = (Offer - r.price) / symbol.ticksize * symbol.tickvalue * r.position
+                    var positionValue = (Offer - r.averagePrice) / symbol.ticksize * symbol.tickvalue * r.position
                 }
                 if (positionValue)  {
                     loga.push(positionValue+'$');
+                    loga.push(r.averagePrice);
                     floating += positionValue;
                     logsep = true
                 }
@@ -144,7 +145,7 @@ tradovate.Events.on('pricechange', function (data) {
             realized += r.realized
             lotsUsed += r.lotsUsed
             //netProfit += Math.round((r.realized - r.lotsUsed * symbol.commission) * 100) / 100;
-            netProfit += parseFloat(r.realized - r.lotsUsed * symbol.commission).toFixed(2)
+            netProfit += parseFloat(parseFloat(r.realized - r.lotsUsed * symbol.commission).toFixed(2))
             if (netProfit > TP) {
                 CloseAll()
                 console.log('Profits taken. Exit.');
@@ -358,8 +359,8 @@ function CloseAll() {
                 realized += r.realized
                 lotsUsed += r.lotsUsed
                 var symbol = symbols[r.symbol.slice(0,-2)]
-                //netProfit += Math.round((r.realized - r.lotsUsed * symbol.commission) * 100) / 100;
-                netProfit += parseFloat(r.realized - r.lotsUsed * symbol.commission).toFixed(2)
+                netProfit += Math.round((r.realized - r.lotsUsed * symbol.commission) * 100) / 100;
+                //netProfit += parseFloat(r.realized - r.lotsUsed * symbol.commission).toFixed(2)
             })
             LogSum();
             process.exit()
@@ -378,3 +379,9 @@ function CloseAll() {
 function LogSum()   {
     console.log('\n--- Floating: ' + floating + '$' + '\t-- Realized: ' + realized + '$' + '\t-- Net: ' + netProfit + '$' + '\t-- RT Lots: ' + lotsUsed);
 }
+
+/*function CountLots(pos) {
+    var cnt = 0
+    while (pos--) cnt += pos
+    return pos
+}*/
